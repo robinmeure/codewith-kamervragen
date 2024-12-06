@@ -1,0 +1,135 @@
+{
+  "name": "{INDEX_NAME}",
+  "defaultScoringProfile": null,
+  "fields": [
+    {
+      "name": "chunk_id",
+      "type": "Edm.String",
+      "key": true,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": false,
+      "sortable": true,
+      "facetable": false,
+      "analyzer": "keyword",
+      "synonymMaps": []
+    },
+    {
+      "name": "fileName",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": true,
+      "sortable": true,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "documentId",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": true,
+      "sortable": true,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "parent_id",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": false,
+      "filterable": true,
+      "sortable": false,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "content",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": false,
+      "sortable": false,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "content_vector",
+      "type": "Collection(Edm.Single)",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": false,
+      "sortable": false,
+      "facetable": false,
+      "synonymMaps": [],
+      "dimensions": 3072,
+      "vectorSearchProfile": "onyourdata-text-profile"
+    }
+  ],
+  "vectorSearch": {
+    "profiles": [
+      {
+        "name": "{INDEX_NAME}-text-profile",
+        "algorithm": "{INDEX_NAME}-algorithm",
+        "vectorizer": "{INDEX_NAME}-text-vectorizer"
+      }
+    ],
+    "algorithms": [
+      {
+        "name": "{INDEX_NAME}-algorithm",
+        "kind": "hnsw",
+        "hnswParameters": {
+          "metric": "cosine",
+          "m": 4,
+          "efConstruction": 400,
+          "efSearch": 500
+        }
+      }
+    ],
+    "vectorizers": [
+      {
+        "name": "{INDEX_NAME}-text-vectorizer",
+        "kind": "azureOpenAI",
+        "azureOpenAIParameters": {
+          "resourceUri": "{AZURE_OPENAI_RESOURCE_URI}",
+          "deploymentId": "{SEARCH_EMBEDDING_MODEL_ID}",
+          "modelName": "{EMBEDDING_MODEL_NAME}"
+        }
+      }
+    ]
+  },
+  "semantic": {
+    "configurations": [
+      {
+        "name": "2nd",
+        "prioritizedFields": {
+          "titleField": {
+            "fieldName": "fileName"
+          },
+          "prioritizedContentFields": [
+            {
+              "fieldName": "content"
+            }
+          ],
+          "prioritizedKeywordsFields": [
+            {
+              "fieldName": "fileName"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

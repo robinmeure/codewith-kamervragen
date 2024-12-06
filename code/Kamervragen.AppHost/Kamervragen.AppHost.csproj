@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>20c42053-3959-4752-b341-43ee99c3967a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="9.0.0" />
+    <PackageReference Include="Aspire.Hosting.NodeJs" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Kamervragen.Domain\Kamervragen.Domain.csproj" />
+    <ProjectReference Include="..\Kamervragen.Frontend\Kamervragen.Frontend.esproj" />
+    <ProjectReference Include="..\Kamervragen.Infrastructure\Kamervragen.Infrastructure.csproj" />
+    <ProjectReference Include="..\Kamervragen.WebApi\Kamervragen.WebApi.csproj" />
+  </ItemGroup>
+
+</Project>
