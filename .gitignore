@@ -21,3 +21,4 @@ code/Kamervragen.Frontend/.env
 /code/Kamervragen.WebApi/appsettings.development.json
 /code/Kamervragen.WebApi/appsettings.json
 /.vs
+/infra/modules/aisearchindex/scripts/setupRBACCosmos.ps1
