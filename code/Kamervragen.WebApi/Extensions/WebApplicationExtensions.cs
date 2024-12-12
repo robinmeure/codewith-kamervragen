@@ -1,6 +1,6 @@
 ﻿using Azure.Identity;
 using Azure.Search.Documents.Indexes;
-using DocApi.Utils;
+using WebApi.Utils;
 using Microsoft.SemanticKernel.Connectors.AzureAISearch;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Microsoft.SemanticKernel.Data;

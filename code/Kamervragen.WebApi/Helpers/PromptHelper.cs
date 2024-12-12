@@ -1,13 +1,18 @@
 ﻿using Microsoft.SemanticKernel.ChatCompletion;
 using Domain;
-using static DocApi.Controllers.ThreadController;
+using static WebApi.Controllers.ThreadController;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
 using System.Text.Json;
 using Azure.Search.Documents.Models;
 using WebApi.Entities;
+using Microsoft.OpenApi.Services;
+using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
+using Infrastructure;
+using System.Reflection.Metadata;
+using WebApi.Helpers;
 
-namespace DocApi.Utils
+namespace WebApi.Utils
 {
     public class PromptHelper(Kernel kernel)
     {
@@ -48,7 +53,9 @@ namespace DocApi.Utils
         {
             IChatCompletionService completionService = _kernel.GetRequiredService<IChatCompletionService>();
 
-            history.AddUserMessage($@"Generate three short, concise but relevant follow-up question based on the answer you just generated.
+            history.AddUserMessage($@"
+                        Generate three short, concise but relevant follow-up question based on the answer you just generated
+                        Try to keep the context in mind, using the documents which were provided as well within the history of this conversation.
                         # Answer
                         {assistantResponse}
 
@@ -88,7 +95,7 @@ namespace DocApi.Utils
             return rewrittenQuery[0].Content;
         }
 
-        internal ChatHistory AugementQA(ChatHistory history, List<SelectedQAPair> selectedQAPairs)
+        internal ChatHistory AugmentQA(ChatHistory history, List<SelectedQAPair> selectedQAPairs)
         {
             string qaPairs = "";
             foreach (SelectedQAPair qaPair in selectedQAPairs)
@@ -101,10 +108,11 @@ namespace DocApi.Utils
             --------------------
             {qaPairs}
             Use the above questions and answers to answer the last user question and use the language of the user, your default language is Dutch.
+            When the user is asking to formulate a response using the combined questions and answers, don't try to look for other resources or data but execute the ask.
             You answer needs to be a json object with the following format. You don't need to start nor end to indicate that the output is in json, this json is parsed from the output
             {{
                 ""answer"": // the answer to the question, add a source reference to the end of each sentence. e.g. Apple is a fruit [reference1.pdf][reference2.pdf]. If no source available, put the answer as I don't know.
-                ""thoughts"": // brief thoughts on how you came up with the answer, e.g. what sources you used, what you thought about, etc.
+                ""thoughts"": // thoughts on how you came up with the answer,define the sources you used, what you thought about, etc.
             }}
             ";
 
@@ -146,18 +154,99 @@ namespace DocApi.Utils
             Always answer in Dutch and be formal
             Each source has a name followed by colon and the actual information, always include the source name for each fact you use in the response. 
             Use square brackets to reference the source, for example [info1.txt#pagenumber]. 
-            Don't combine sources, list each source separately, for example [info1.txt#5][info2.pdf#12].
+            Don't combine sources, list each source separately, for example [info1.txt#p5][info2.pdf#p12].
             Use the above questions and answers to answer the last user question and use the language of the user, your default language is Dutch.
             You answer needs to be a json object with the following format. You don't need to start nor end to indicate that the output is in json, this json is parsed from the output
             {{
                 ""answer"": 
-                ""thoughts"": // brief thoughts on how you came up with the answer, e.g. what sources you used, what you thought about, etc.
+                ""thoughts"": // thoughts on how you came up with the answer, define the sources you used, what you thought about, etc.
             }}";
 
             history.AddSystemMessage(systemPrompt);
 
             return history;
         }
+
+        internal async Task<DocumentResult> ExtractDocument(List<IndexDoc> chunks, string documentId)
+        {
+            string query = "wat zijn alle vragen en antwoorden in dit document";
+            ChatHistory history = [];
+            history.AddUserMessage(query);
+
+            
+           
+
+            string documents = "";
+            foreach (IndexDoc doc in chunks)
+            {
+                string chunkId = doc.ChunkId;
+                string pageNumber = chunkId.Split("_pages_")[1];
+                documents += $"PageNumber: {pageNumber}\n";
+                documents += $"FileName: {doc.FileName}\n";
+                documents += $"Content: {doc.Content}\n\n";
+                documents += "------\n\n";
+            }
+
+            string systemPrompt = $@"
+            Documents
+            -------    
+            {documents}
+            You are an AI assistant that extracts the question and answers from the provided documents
+            These documents contain questions and answers, all questions are in bold and answers are in normal text.
+            Make sure that the question is isolated from the answer and there is no need to add 'question' or 'answer' before the text.
+            Summarize the title, subject, reference and date of the document when starting the conversation.
+        ";
+
+            string assistantResponse = "";
+            history.AddSystemMessage(systemPrompt);
+
+            IChatCompletionService completionService = _kernel.GetRequiredService<IChatCompletionService>();
+
+
+            bool success = false;
+            while (!success)
+            {
+                try
+                {
+                    // Specify response format by setting Type object in prompt execution settings.
+                    var executionSettings = new AzureOpenAIPromptExecutionSettings
+                    {
+                        ResponseFormat = typeof(DocumentResult)
+                    };
+
+                    var chatResponse = await completionService.GetChatMessageContentsAsync(
+                                        executionSettings: executionSettings,
+                                        chatHistory: history,
+                                        kernel: _kernel
+                                    );
+
+                    foreach (var chunk in chatResponse)
+                    {
+                        assistantResponse += chunk.Content;
+                    }
+                    success = true;
+                }
+                catch (HttpOperationException httpOperationException)
+                {
+                    string message = httpOperationException.Message;
+                    int retryAfterSeconds = Utilities.ExtractRetryAfterSeconds(message);
+                    Console.WriteLine($"Rate limit hit. Retrying after {retryAfterSeconds} seconds...");
+                    System.Threading.Thread.Sleep(retryAfterSeconds * 1000);
+                }
+            }
+
+            if (string.IsNullOrEmpty(assistantResponse))
+                return null;
+
+            var documentResult = JsonSerializer.Deserialize<DocumentResult>(assistantResponse);
+            string parsedDocumentId = documentResult.Id;
+            documentResult.Id = documentId;
+
+            return documentResult;
+          
+        }
+
+
 
         //internal async Task<ChatHistory> AugmentHistoryWithSearchResults(ChatHistory history, KernelSearchResults<object> searchResults)
         //{
@@ -174,7 +263,7 @@ namespace DocApi.Utils
         //        documents += "------\n\n";
         //    }
 
-            
+
         //    string systemPrompt = $@"
         //    Documents
         //    -------    

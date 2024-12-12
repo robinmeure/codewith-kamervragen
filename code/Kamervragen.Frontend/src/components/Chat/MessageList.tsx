@@ -7,6 +7,7 @@ import { Dismiss24Regular } from '@fluentui/react-icons';
 import { type } from 'os';
 import React from 'react';
 import Markdown from 'react-markdown';
+import { SelectedQAPair } from '../Search/QuestionAnswerList';
 
 const useClasses = makeStyles({
     scrollContainer: {
@@ -74,10 +75,12 @@ type messageListProps = {
     messages: IChatMessage[];
     loading: boolean;
     onFollowUp: (question: string) => void;
+    onQASelected: (selectedPairs: SelectedQAPair[]) => void;
+    
     selectedChatId: string | undefined; // Add this line
 }
 
-export function MessageList({ messages, loading, onFollowUp,selectedChatId }: messageListProps) {
+export function MessageList({ messages, loading, selectedChatId, onFollowUp, onQASelected }: messageListProps) {
 
     const classes = useClasses();
     const containerRef = useRef<HTMLDivElement>(null);
@@ -111,7 +114,7 @@ export function MessageList({ messages, loading, onFollowUp,selectedChatId }: me
 
             <div className={classes.messageContainer}>
                 {messages.map((message) => (
-                    <Message key={message.id} message={message} onFollowUp={onFollowUp} selectedChatId={selectedChatId} />
+                    <Message key={message.id} message={message} onFollowUp={onFollowUp} selectedChatId={selectedChatId} onQASelected={onQASelected} />
                 ))}
                 {loading && <div>Loading...</div>}
             </div>

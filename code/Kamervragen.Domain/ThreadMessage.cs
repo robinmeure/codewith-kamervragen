@@ -26,8 +26,8 @@ namespace Domain
         [JsonProperty(PropertyName = "created")]
         public required DateTime Created { get; set; }
 
-        [JsonProperty(PropertyName = "responseChoice")]
-        public ResponseChoice? ResponseChoice { get; set; }
+        [JsonProperty(PropertyName = "context")]
+        public ResponseContext? Context { get; set; }
 
     }
 }

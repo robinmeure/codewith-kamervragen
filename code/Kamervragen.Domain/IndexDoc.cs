@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel.Data;
+using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
 public record IndexDoc
@@ -38,3 +39,10 @@ public record IndexDoc
     public double Score { get; set; }
 }
 
+public record SimpleIndexDoc
+{ 
+    public required string DocumentId { get; set; }
+    public required string FileName { get; set; }
+    public List<string>? Highlights { get; set; }
+}
+    

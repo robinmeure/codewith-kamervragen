@@ -34,6 +34,10 @@ export class SearchService {
                     'Content-Type': 'application/json'
                 }
             });
+            if (response.status == 404)
+            {
+                return null;
+            }
             if (!response.ok) {
                 throw new Error(`Error fetching answers: ${response.statusText}`);
             }

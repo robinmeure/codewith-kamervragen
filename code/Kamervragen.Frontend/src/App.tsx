@@ -1,4 +1,4 @@
-import { FluentProvider, webDarkTheme, webLightTheme } from "@fluentui/react-components";
+import { FluentProvider, teamsLightTheme, webDarkTheme, webLightTheme } from "@fluentui/react-components";
 import { ChatPage } from './pages/ChatPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MsalProvider, MsalAuthenticationTemplate } from "@azure/msal-react";

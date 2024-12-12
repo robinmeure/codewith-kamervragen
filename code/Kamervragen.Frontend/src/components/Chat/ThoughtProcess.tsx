@@ -1,11 +1,7 @@
 import { Stack } from "@fluentui/react";
-import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
-import json from "react-syntax-highlighter/dist/esm/languages/hljs/json";
-import { a11yLight } from "react-syntax-highlighter/dist/esm/styles/hljs";
+import ReactJsonView from '@microlink/react-json-view'
 import { makeStyles, tokens } from '@fluentui/react-components';
 import { Thoughts } from "../../models/ChatMessage";
-
-SyntaxHighlighter.registerLanguage("json", json);
 
 interface Props {
     thoughts: Thoughts[];
@@ -58,7 +54,7 @@ const useClasses = makeStyles({
         maxHeight: '18.75em',
       },
       tProp: {
-        backgroundColor: '#d7d7d7',
+        backgroundColor: tokens.colorBrandBackground3Static,
         color: '#333232',
         fontSize: '0.75em',
         padding: '0.1875em 0.625em',
@@ -74,7 +70,7 @@ const useClasses = makeStyles({
 
 export const ThoughtProcess = ({ thoughts }: Props) => {
     const classes = useClasses();
-
+    const jsonstring = JSON.stringify(thoughts, null, 2);
 
     return (
         <ul className={classes.tList}>
@@ -91,9 +87,7 @@ export const ThoughtProcess = ({ thoughts }: Props) => {
                                 ))}
                         </Stack>
                         {Array.isArray(t.description) ? (
-                            <SyntaxHighlighter language="json" wrapLongLines className={classes.tCodeBlock} style={a11yLight}>
-                                {JSON.stringify(t.description, null, 2)}
-                            </SyntaxHighlighter>
+                            <ReactJsonView src={t.description}/>
                         ) : (
                             <div>{t.description}</div>
                         )}

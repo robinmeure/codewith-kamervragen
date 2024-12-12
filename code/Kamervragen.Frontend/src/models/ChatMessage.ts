@@ -3,10 +3,15 @@ export interface IChatMessage {
     role: string,
     content: string,
     timestamp?: string,
-    followupquestions?: string[],
+    context?:IChatContext    
+}
+
+export interface IChatContext
+{
+    followup_questions?: string[],
     citations?: Citation[],
     dataPointsContent?: DataPointsContent[],
-    thougths?: Thoughts[]
+    thoughts?: Thoughts[]
 }
 
 export type Thoughts = {
@@ -37,6 +42,7 @@ export type ChatAppResponse = {
 
 export type DataPointsContent = 
 {
+    fileName:string;
     content: string;
     documentId: string;
     pageNumber: string;

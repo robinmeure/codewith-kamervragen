@@ -110,7 +110,7 @@ export class ChatService {
         }
     }
 
-    public sendMessageAsync = async ({chatId, message, selectedQAPair, token} : { chatId: string, message: string, selectedQAPair?:SelectedQAPair[], token: string }): Promise<Response> => 
+    public sendMessageAsync = async ({chatId, message, selectedQAPair, includeQA, includeDocs, token} : { chatId: string, message: string, selectedQAPair?:SelectedQAPair[], includeQA?:boolean, includeDocs?:boolean, token: string }): Promise<Response> => 
     {
         let retries = 0;
         while (retries < this.MAX_RETRIES) 
@@ -123,7 +123,7 @@ export class ChatService {
                         'Authorization': `Bearer ${token}`,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: message, selectedQAPair: selectedQAPair }),
+                    body: JSON.stringify({ message: message, selectedQAPair: selectedQAPair, includeQA: includeQA, includeDocs: includeDocs }),
                 });
 
                 if (response.status === 429) {

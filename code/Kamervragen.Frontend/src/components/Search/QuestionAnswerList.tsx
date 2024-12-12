@@ -40,7 +40,7 @@ highlights: {
 
 interface QuestionAnswerListProps {
   document: IDocumentResult;
-  onSelectionChange: (documentId: string, selectedPairs: SelectedQAPair[]) => void;
+  onSelectionChange: (selectedPairs: SelectedQAPair[]) => void;
 }
 
 export interface SelectedQAPair {
@@ -57,7 +57,7 @@ const QuestionAnswerList: React.FC<QuestionAnswerListProps> = ({ document, onSel
     setOpenItems(data.openItems);
   };
   
-  const handleCheckboxChange = (qaPair: { question: string; answer: string }, checked: boolean) => {
+  const handleCheckboxChange = (qaPair: { documentId:string, question: string; answer: string }, checked: boolean) => {
     let updatedSelectedPairs = [...selectedPairs];
     if (checked) {
       updatedSelectedPairs.push({
@@ -71,7 +71,7 @@ const QuestionAnswerList: React.FC<QuestionAnswerListProps> = ({ document, onSel
       );
     }
     setSelectedPairs(updatedSelectedPairs);
-    onSelectionChange(document.id, updatedSelectedPairs);
+    onSelectionChange(updatedSelectedPairs);
   };
 
   return (

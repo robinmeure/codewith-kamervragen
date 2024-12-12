@@ -1,8 +1,11 @@
-import { makeStyles, tokens, Button, Input } from '@fluentui/react-components';
-import { BroomRegular, Send24Regular } from '@fluentui/react-icons';
+import { Stack } from '@fluentui/react';
+import { makeStyles, tokens, Button, Input, Checkbox, Toolbar } from '@fluentui/react-components';
+import { BroomRegular, Checkmark12Regular, CopyRegular, Document10016Regular, Lightbulb16Regular, Question16Filled, Send24Regular } from '@fluentui/react-icons';
+import { useState } from 'react';
 
 const useClasses = makeStyles({
     container: {
+        flexDirection: 'column',
         display: 'flex',
         height: '100px',
         width: '70%',
@@ -11,7 +14,8 @@ const useClasses = makeStyles({
         gap: tokens.spacingHorizontalS,
         justifyContent: 'space-between',
         paddingTop: tokens.spacingVerticalL,
-        paddingBottom: tokens.spacingVerticalL
+        paddingBottom: tokens.spacingVerticalL,
+        marginBottom: tokens.spacingVerticalL,
     },
     input: {
         flexGrow: 1,
@@ -21,31 +25,105 @@ const useClasses = makeStyles({
     },
     button: {
         height: '60px'
-    }
-   
+    },
+    toolbarContainer: {
+        marginBottom: tokens.spacingVerticalS,
+        marginTop: tokens.spacingVerticalS
+
+    },
+    toolbar: {
+        marginBottom: tokens.spacingVerticalS,
+      },
+      inputSection: {
+        display: 'flex',
+        alignItems: 'center',
+        width: '100%',
+        gap: tokens.spacingHorizontalM,
+        marginBottom: tokens.spacingVerticalS,
+      },
+      toggleButtonActive: {
+        backgroundColor: tokens.colorBrandBackground,
+        color: tokens.colorNeutralForegroundOnBrand,
+      },
+      toggleButtonInactive: {
+        backgroundColor: tokens.colorTransparentBackground,
+        color: tokens.colorNeutralForeground1,
+      },
 });
 
 type chatInputType = {
     value: string,
     setValue: (value: string ) => void,
-    onSubmit: () => void,
-    clearChat: () => void
+    onSubmit: (message: string) => void,
+    clearChat: () => void,
+    includeQA: boolean;
+    includeDocs: boolean;
+    toggleIncludeQA: () => void;
+    toggleIncludeDocs: () => void;
 }
 
-export function ChatInput({ value, setValue, onSubmit,clearChat }: chatInputType) {
+export function ChatInput({ value, setValue, onSubmit,clearChat, includeQA,
+    includeDocs,
+    toggleIncludeQA,
+    toggleIncludeDocs }: chatInputType) {
     const classes = useClasses();
-    
+  
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.key === 'Enter') {
-          onSubmit();
+          handleSubmit();
         }
-    };
+      };
+    
+
+    const handleSubmit = () => {
+        onSubmit(value);
+      };
 
     return (
         <div className={classes.container}>
-            <Button className={`${classes.button}`} icon={<BroomRegular />}onClick={clearChat} aria-label="Clear session" role="button" tabIndex={0}/>
-            <Input onKeyDown={handleKeyDown} className={classes.input} size="large" value={value} onChange={(_e, data) => setValue(data.value)}/>
-            <Button className={classes.button} onClick={onSubmit} size="large" icon={<Send24Regular />}/>
-        </div>
+      <Toolbar className={classes.toolbar}>
+      <Button
+          icon={<Document10016Regular />}
+          title="Gebruik mijn documenten"
+          aria-label="Gebruik mijn documenten"
+          onClick={toggleIncludeDocs}
+          appearance={includeDocs ? 'primary' : 'transparent'}
+          className={includeDocs ? classes.toggleButtonActive : classes.toggleButtonInactive}
+        />
+        <Button
+          icon={<Question16Filled />}
+          title="Gebruik vraagstukken"
+          aria-label="Gebruik vraagstukken"
+          onClick={toggleIncludeQA}
+          appearance={includeQA ? 'primary' : 'transparent'}
+          className={includeQA ? classes.toggleButtonActive : classes.toggleButtonInactive}
+        />
+      </Toolbar>
+      <div className={classes.inputSection}>
+        <Button
+          className={classes.button}
+          icon={<BroomRegular />}
+          onClick={clearChat}
+          aria-label="Clear session"
+          role="button"
+          tabIndex={0}
+        />
+        <Input
+          onKeyDown={handleKeyDown}
+          className={classes.input}
+          size="large"
+          value={value}
+          onChange={(_e, data) => setValue(data.value)}
+          placeholder="Type your message..."
+        />
+        <Button
+          className={classes.button}
+          onClick={onSubmit}
+          size="large"
+          icon={<Send24Regular />}
+          aria-label="Send message"
+        />
+      </div>
+    </div>
     );
 };

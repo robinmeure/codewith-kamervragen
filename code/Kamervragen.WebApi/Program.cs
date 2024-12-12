@@ -11,7 +11,7 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
 using Microsoft.SemanticKernel.Connectors.AzureAISearch;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
-using DocApi.Utils;
+using WebApi.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using Microsoft.AspNetCore.Http.Features;
@@ -65,6 +65,7 @@ namespace DocApi
 
             // Setting up the interfaces and implentations to be used in the controllers
             builder.Services.AddSingleton<IDocumentRegistry, CosmosDocumentRegistry>();
+            builder.Services.AddSingleton<IDocumentStore, BlobDocumentStore>();
             builder.Services.AddSingleton<ISearchService, AISearchService>();
             builder.Services.AddSingleton<IThreadRepository, CosmosThreadRepository>();
 

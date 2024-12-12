@@ -7,6 +7,11 @@ import { ChatHeader } from './ChatHeader';
 import { SelectedQAPair } from '../Search/QuestionAnswerList';
 import { ISearchDocument } from '../../models/SearchDocument';
 import SelectedDocumentsList from '../Search/SelectedDocumentList';
+import { DocumentViewer } from '../Documents/DocumentViewer';
+import { SelectedItemsPanel } from './SelectedItemsPanel';
+import { TextCollapse20Filled } from '@fluentui/react-icons/fonts';
+import { ExpandUpLeft20Filled } from '@fluentui/react-icons';
+import { Stack } from '@fluentui/react';
 
 
 const useClasses = makeStyles({
@@ -35,6 +40,15 @@ const useClasses = makeStyles({
     tags:
     {
         margin:'10px'
+    },
+    selectedQAContainer: {
+        width: '70%',
+        margin: 'auto',
+    },
+    qaStack: {
+        width: '100%',
+        justifyContent: 'center',
+        marginTop: '20px'
     }
 });
 
@@ -54,7 +68,18 @@ export function ChatInterface({ selectedChatId,selectedQAPairs }: chatInterfaceT
     const { dispatchToast } = useToastController(toasterId);
     const [isDialogVisible, setIsDialogVisible] = useState(false);
     const [selectedDocuments, setSelectedDocuments] = useState<ISearchDocument[]>([]);
+    const [selectedQAPairsState, setSelectedQAPairsState] = useState<SelectedQAPair[]>(selectedQAPairs);
+    const [isExpanded, setIsExpanded] = useState<boolean>(true);
+    const [includeQA, setIncludeQA] = useState<boolean>(false);
+    const [includeDocs, setIncludeDocs] = useState<boolean>(false);
 
+    const toggleIncludeQA = () => {
+        setIncludeQA(prev => !prev);
+    };
+    
+      const toggleIncludeDocs = () => {
+        setIncludeDocs(prev => !prev);
+    };
 
     const notify = (intent:ToastIntent, notification:string) =>
         dispatchToast(
@@ -64,11 +89,19 @@ export function ChatInterface({ selectedChatId,selectedQAPairs }: chatInterfaceT
             { position:'top-end', intent: intent, timeout: 5000 }
         );
 
-    const submitMessage = async (message: string) => {
-        if (selectedChatId && message) {
+        const submitMessage = async (message: string) => {
+            if (selectedChatId && message) {
             setUserInput("");
-            console.log(selectedQAPairs);
-            const success = await sendMessage({ message, selectedQAPair: selectedQAPairs });
+            const selectedQAPairsToSubmit = includeQA ? selectedQAPairsState : [];
+            const documentsToSubmit = includeDocs ? selectedDocuments : [];
+            console.log(selectedQAPairsState);
+            //const success = await sendMessage({ message, selectedQAPair: selectedQAPairsState });
+            const success = await sendMessage({ 
+                message, 
+                selectedQAPair: selectedQAPairsToSubmit, 
+                includeDocs: includeDocs,
+                includeQA: includeQA 
+              });
             if (!success) notify('error', "Failed to send message.");
         }
     }
@@ -94,7 +127,22 @@ export function ChatInterface({ selectedChatId,selectedQAPairs }: chatInterfaceT
         );
       };
 
-   
+    const onQASelected = (selectedPairs: SelectedQAPair[]) => {
+        setSelectedQAPairsState(selectedPairs);
+    }
+
+    const toggleQAPairSelection = (question: string) => {
+        setSelectedQAPairsState(prev => {
+          const isSelected = prev.some(qa => qa.question === question);
+          if (isSelected) {
+            return prev.filter(qa => qa.question !== question);
+          } else {
+            // Find the QA pair from initialSelectedQAPairs and add it
+            const qaToAdd = selectedQAPairs.find(qa => qa.question === question);
+            return qaToAdd ? [...prev, qaToAdd] : prev;
+          }
+        });
+      };
 
     return (
         <div className={classes.root}>
@@ -119,12 +167,29 @@ export function ChatInterface({ selectedChatId,selectedQAPairs }: chatInterfaceT
                                 </DialogBody>
                             </DialogSurface>
                             </Dialog>
-                        <MessageList messages={messages} loading={chatPending} onFollowUp={handleFollowUp} selectedChatId={selectedChatId} />                        
-                        <ChatInput value={userInput} setValue={setUserInput} onSubmit={() => submitMessage(userInput)} clearChat={clearChat} />
+                        <MessageList messages={messages} loading={chatPending} onFollowUp={handleFollowUp} selectedChatId={selectedChatId} onQASelected={onQASelected} />                        
+                        
+                        <Stack horizontalAlign='center' className={classes.qaStack}>
+                            <Button onClick={() => setIsExpanded(!isExpanded)} appearance='primary' disabled={selectedQAPairsState.length === 0} aria-label="Toggle panel">Geselecteerde vraagstukken</Button>
+                            {(isExpanded && selectedQAPairsState.length > 0) && (
+                                <div className={classes.selectedQAContainer} >
+                                <SelectedDocumentsList selectedQAPairs={selectedQAPairsState} toggleQAPairSelection={toggleQAPairSelection} />
+                                </div>
+                            )}
+                        </Stack>
+                        <ChatInput 
+                            value={userInput} 
+                            setValue={setUserInput} 
+                            onSubmit={() => submitMessage(userInput)} 
+                            clearChat={clearChat}  
+                            includeQA={includeQA}
+                            includeDocs={includeDocs}
+                            toggleIncludeQA={toggleIncludeQA}
+                            toggleIncludeDocs={toggleIncludeDocs}/>
                     </>
                 )}
                 {selectedTab === 'documents' && (
-                    <SelectedDocumentsList selectedQAPairs={selectedQAPairs} />
+                    <><DocumentViewer chatId={selectedChatId} /></>
                 )}
             </div>
         </div>

@@ -2,24 +2,25 @@
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json.Serialization;
 
-public record ResponseChoice
-{
-    [JsonProperty(PropertyName = "id")]
-    public required string Id { get; set; }
+//public record ResponseChoice
+//{
 
-    [JsonProperty(PropertyName = "message")]
-    public required ResponseMessage Message { get; set; }
+//    [JsonProperty(PropertyName = "id")]
+//    public required string Id { get; set; }
 
-    [JsonProperty(PropertyName = "context")]
-    public required ResponseContext Context { get; set; }
+//    [JsonProperty(PropertyName = "message")]
+//    public required ResponseMessage Message { get; set; }
 
-    [JsonProperty(PropertyName = "created")]
-    public required DateTime Created { get; set; }
+//    [JsonProperty(PropertyName = "context")]
+//    public required ResponseContext Context { get; set; }
 
-    [JsonProperty(PropertyName = "citationBaseUrl")]
-    public string? CitationBaseUrl { get; set; }
+//    [JsonProperty(PropertyName = "created")]
+//    public required DateTime Created { get; set; }
 
-}
+//    [JsonProperty(PropertyName = "citationBaseUrl")]
+//    public string? CitationBaseUrl { get; set; }
+
+//}
 
 
 

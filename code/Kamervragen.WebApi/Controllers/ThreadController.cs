@@ -5,7 +5,6 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Data;
 using System.Text;
-using DocApi.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Identity.Web.Resource;
 using Microsoft.Azure.Cosmos;
@@ -20,8 +19,9 @@ using System.Threading;
 using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Kamervragen.Domain;
+using WebApi.Utils;
 
-namespace DocApi.Controllers
+namespace WebApi.Controllers
 {
 
     [Route("threads")]
@@ -166,7 +166,14 @@ namespace DocApi.Controllers
         [HttpGet("{threadId}/search/{documentId}")]
         public async Task<IActionResult> GetAnswers([FromRoute] string documentId)
         {
-            var documentResult = await _documentRegistry.GetDocsPerThreadAsync(documentId);
+            var documentResult = await _documentRegistry.GetExtractedDataFromDocument(documentId);
+            if (documentResult == null || documentResult.Count == 0)
+            {
+                var chunks = await _searchService.QueryDocumentAsync(documentId);
+                var extractedDoc = await _promptHelper.ExtractDocument(chunks, documentId);
+                var addedDoc = await _documentRegistry.AddExtractedDocumentAsync(extractedDoc);
+                return NotFound();
+            }
             return Ok(documentResult.FirstOrDefault());
         }
 
@@ -179,11 +186,7 @@ namespace DocApi.Controllers
             {
                 return BadRequest();
             }
-            var searchOptions = new TextSearchOptions()
-            {
-                Top = 10
-            };
-            
+           
             var searchResults = await _searchService.SearchForDocuments(query, null);
 
             // using this hashset to make sure we don't store the same document multiple times (which can happen because of the chunking)
@@ -223,6 +226,7 @@ namespace DocApi.Controllers
         {
             bool suggestFollowupQuestions = true; // need to configure this
             bool keepTrackOfThoughts = true;
+            List<Thoughts> thoughts = new List<Thoughts>();
 
             _logger.LogInformation("Adding thread message to CosmosDb for threadId : {0}", threadId);
 
@@ -235,28 +239,71 @@ namespace DocApi.Controllers
 
             try
             {
+                ThreadMessage question = new()
+                {
+
+                    Id = Guid.NewGuid().ToString(),
+                    Type = "CHAT_MESSAGE",
+                    ThreadId = threadId,
+                    UserId = userId,
+                    Role = "user",
+                    Content = messageRequest.Message,
+                    Context = null,
+                    Created = DateTime.Now
+                };
+
 
                 List<ThreadMessage> messages = await _threadRepository.GetMessagesAsync(userId, threadId);
                 ChatHistory history = _promptHelper.BuildConversationHistory(messages, messageRequest.Message);
                 IChatCompletionService completionService = _kernel.GetRequiredService<IChatCompletionService>();
 
+                string rewrittenQuery = string.Empty;
+                if (messageRequest.includeQA)
+                    rewrittenQuery = messageRequest.Message;
+                else
+                    rewrittenQuery = await _promptHelper.RewriteQueryAsync(history);
 
-                string rewrittenQuery = await _promptHelper.RewriteQueryAsync(history);
+                thoughts.Add(new Thoughts("Prompt to generate search query",rewrittenQuery));
+
                 List<IndexDoc> searchResults = new List<IndexDoc>();
-                if (messageRequest.SelectedQAPair.Count == 0)
+
+                // check if the user has uploaded any documents
+                var documents = await _documentRegistry.GetDocsPerThreadAsync(threadId);
+                if (documents.Count > 0 && messageRequest.includeDocs)
                 {
-                    searchResults = await _searchService.SearchForDocuments(rewrittenQuery, null);
+
+                    foreach (var document in documents)
+                    {
+                        var documentResult = await _searchService.QueryDocumentAsync(document.Id);
+                        searchResults.AddRange(documentResult);
+                    }
+                    thoughts.Add(new Thoughts("Documents in current conversation", JsonSerializer.Serialize(SimpleIndexDocs(searchResults))));
+                }
+
+                // check if there any selected QA pairs in the payload, if there are, use that to also pass that to the completionservice
+                if (messageRequest.SelectedQAPair.Count > 0)
+                { 
+                    _promptHelper.AugmentQA(history, messageRequest.SelectedQAPair);
+                    thoughts.Add(new Thoughts("Using provided QA pairs", JsonSerializer.Serialize(messageRequest.SelectedQAPair)));
+                }
+                else if (messageRequest.includeDocs)
+                {
                     _promptHelper.AugmentHistoryWithSearchResultsUsingSemanticRanker(history, searchResults);
                 }
                 else
                 {
-                    _promptHelper.AugementQA(history, messageRequest.SelectedQAPair);
+                    // if not than utilize the documents and contents from search
+                    var genericResults = await _searchService.SearchForDocuments(rewrittenQuery, null);
+                    searchResults.AddRange(genericResults);
+                    _promptHelper.AugmentHistoryWithSearchResultsUsingSemanticRanker(history, searchResults);
+
+                    //thoughts.Add(new Thoughts("Using searchresults to define a response ", JsonSerializer.Serialize(SimpleIndexDocs(searchResults))));
                 }
 
                 // Specify response format by setting Type object in prompt execution settings.
                 var executionSettings = new AzureOpenAIPromptExecutionSettings
                 {
-                    ResponseFormat = typeof(Kamervragen.Domain.AnswerAndThougthsResponse)
+                    ResponseFormat = typeof(AnswerAndThougthsResponse)
                 };
 
                 // pass the data to the completionservice to formulate a response
@@ -272,33 +319,49 @@ namespace DocApi.Controllers
                     assistantResponse += chunk.Content;
                 }
 
-                var answer = JsonSerializer.Deserialize<AnswerAndThougthsResponse>(assistantResponse);
+                var assistantAnswer = JsonSerializer.Deserialize<AnswerAndThougthsResponse>(assistantResponse);
 
                 // get follow up questions
                 string[]? followUpQuestionList = null;
                 if (suggestFollowupQuestions)
                 {
-                    var question = messageRequest.Message;
-                    followUpQuestionList = await _promptHelper.GenerateFollowUpQuestionsAsync(history, assistantResponse, question);
+                    var _question = messageRequest.Message;
+                    followUpQuestionList = await _promptHelper.GenerateFollowUpQuestionsAsync(history, assistantResponse, _question);
                 }
 
-            
+                thoughts.Add(new Thoughts("Answer", assistantAnswer.Thoughts));
+
                 // create response which will be send back to the frontend
-                var responseMessage = new ResponseMessage("assistant", answer.Answer);
+                var responseMessage = new ResponseMessage("assistant", assistantAnswer.Answer);
                 var responseContext = new ResponseContext(
                     FollowupQuestions: followUpQuestionList ?? Array.Empty<string>(),
                     DataPointsContent: searchResults.Select(x => new SupportingContentRecord(x.FileName, x.DocumentId, (x.ChunkId.Split("_pages_")[1]), x.Content)).ToArray(),
-                    Thoughts: new[] { new Thoughts("Thoughts", answer.Thoughts) });
-                var choice = new ResponseChoice() { Context = responseContext, Created = DateTime.UtcNow, Id = Guid.NewGuid().ToString(), Message = responseMessage, CitationBaseUrl = "https://localhost" };
+                    Thoughts: thoughts.ToArray());
 
-                await _threadRepository.PostMessageAsync(userId, threadId, messageRequest.Message, "user");
-                await _threadRepository.PostMessageAsync(userId, threadId, choice);
+                ThreadMessage answer = new()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Type = "CHAT_MESSAGE",
+                    ThreadId = threadId,
+                    UserId = userId,
+                    Role = responseMessage.Role,
+                    Content = responseMessage.Content,
+                    Context = responseContext,
+                    Created = DateTime.Now
+                };
 
-                return Ok(choice);
+
+
+                await _threadRepository.PostMessageAsync(userId, question);
+                await _threadRepository.PostMessageAsync(userId, answer);
+
+                return Ok(answer);
             }
             catch (HttpOperationException httpOperationException)
             {
                 _logger.LogError("An error occurred: {0}", httpOperationException.Message);
+                return BadRequest(httpOperationException);
+
                 return RateLimitResponse(httpOperationException);
             }
             catch (Exception ex)
@@ -306,6 +369,24 @@ namespace DocApi.Controllers
                 _logger.LogError("An error occurred: {0}", ex.Message);
             }
             return new EmptyResult();
+        }
+
+        public static List<SimpleIndexDoc> SimpleIndexDocs(List<IndexDoc> results)
+        {
+            List<SimpleIndexDoc> simpleIndexDocs = new List<SimpleIndexDoc>();
+            foreach (var result in results)
+            {
+                simpleIndexDocs.Add(
+                   new SimpleIndexDoc()
+                        {
+                            DocumentId = result.DocumentId,
+                            FileName = result.FileName,
+                            Highlights = result.Highlights
+                        }
+                    );
+            }
+            return simpleIndexDocs;
+
         }
 
         internal IActionResult RateLimitResponse(HttpOperationException httpOperationException)

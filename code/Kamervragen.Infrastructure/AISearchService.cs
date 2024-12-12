@@ -87,16 +87,15 @@ namespace Infrastructure
             return true;
         }
 
-        public async Task<BlobDocumenResult> IsChunkingComplete(BlobDocumenResult docPerThread)
+        public async Task<DocsPerThread> IsChunkingComplete(DocsPerThread docPerThread)
         {
-            List<BlobDocumenResult> docsPerThread = new List<BlobDocumenResult> { docPerThread };
+            List<DocsPerThread> docsPerThread = new List<DocsPerThread> { docPerThread };
             var result = await IsChunkingComplete(docsPerThread);
             return result.First();
         }
 
-        public async Task<List<BlobDocumenResult>> IsChunkingComplete(List<BlobDocumenResult> docsPerThreads)
+        public async Task<List<DocsPerThread>> IsChunkingComplete(List<DocsPerThread> docsPerThreads)
         {
-
             for ( int x = 0; x < docsPerThreads.Count; x++)
             {
                 var doc = docsPerThreads[x];
@@ -104,8 +103,8 @@ namespace Infrastructure
                 {
                     Size = 1,
                     IncludeTotalCount = true,
-                    Select = { "chunk_id", "document_id", "thread_id" },
-                    Filter = string.Format("document_id eq '{0}'", doc.Id)
+                    Select = { "chunk_id", "documentId", "threadId" },
+                    Filter = string.Format("documentId eq '{0}'", doc.Id)
                 };
                 SearchResults<SearchDocument> response = await _searchClient.SearchAsync<SearchDocument>("*", searchOptions);
                 doc.AvailableInSearchIndex = response.TotalCount > 0;
@@ -139,27 +138,10 @@ namespace Infrastructure
                         //SemanticFields = { "content" }
                     },
                     Size = 5,
-                    Filter = filterString,
+                    Filter = $"threadId eq null",
                     QueryLanguage = "NL-nl",
                     QueryType = SearchQueryType.Semantic
                 });
-
-            // need to fix this to return an answer with the right documentId (based on the chunkId which is the key value)
-            //if (response.SemanticSearch.Answers != null)
-            //{
-            //    foreach (QueryAnswerResult result in response.SemanticSearch.Answers)
-            //    {
-            //        docs.Add(new IndexDoc
-            //        {
-            //            Answer = result.Text,
-            //            DocumentId = result.Key,
-            //            ChunkId = result.Key,
-            //            Content = result.Text,
-            //            FileName = result.Key,
-            //            Score = result.Score ?? 0
-            //        });
-            //    }
-            //}
 
             await foreach (SearchResult<IndexDoc> searchResult in response.GetResultsAsync())
             {
@@ -203,8 +185,6 @@ namespace Infrastructure
             }
 
             docs = docs.OrderByDescending(doc => doc.Score).ToList();
-
-
             return docs;
         }
 
@@ -314,28 +294,5 @@ namespace Infrastructure
 
             return [.. sb];
         }
-
-        public Task<bool> ExtractDocuments(List<BlobDocumenResult> documents)
-        {
-            throw new NotImplementedException();
-        }
-
-        //public async Task<bool> ExtractDocuments(List<BlobDocumenResult> documents)
-        //{
-
-        //    foreach (var document in documents)
-        //    {
-        //        var documentChunks = await QueryDocumentAsync(document.Id);
-        //        if (documentChunks.Count == 0)
-        //        {
-        //            _logger.LogWarning("Document not found in search index: {0}", document.Id);
-        //            continue;
-        //        }
-
-
-        //    }
-        //}
     }
-
-    
 }

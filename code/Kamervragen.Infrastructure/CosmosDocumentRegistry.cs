@@ -15,7 +15,8 @@ namespace Infrastructure
         private readonly IConfiguration _configuration;
         private readonly ILogger<CosmosDocumentRegistry> _logger;
 
-        private Container _container;
+        private Container _extractedDocumentsContainer;
+        private Container _documentsPerThreadContainer;
 
         public CosmosDocumentRegistry(CosmosClient client, IConfiguration configuration, ILogger<CosmosDocumentRegistry> logger)
         {
@@ -23,16 +24,18 @@ namespace Infrastructure
             _client = client;
             _configuration = configuration;
             string databaseName = _configuration.GetValue<string>("Cosmos:DatabaseName") ?? "chats";
-            string containerName = _configuration.GetValue<string>("Cosmos:DocumentContainerName") ?? "documents";
+            string extractedDocumentsContainerName = _configuration.GetValue<string>("Cosmos:DocumentContainerName") ?? "documents";
+            string documentsPerThreadContainerName = _configuration.GetValue<string>("Cosmos:DocumentContainerName") ?? "documentsperthread";
 
-            _container = _client.GetContainer(databaseName, containerName);
+            _extractedDocumentsContainer = _client.GetContainer(databaseName, extractedDocumentsContainerName);
+            _documentsPerThreadContainer = _client.GetContainer(databaseName, documentsPerThreadContainerName);
         }
 
-        public async Task<string> AddDocumentToThreadAsync(DocumentResult docsPerThread)
+        public async Task<string> AddDocumentToThreadAsync(DocsPerThread docsPerThread)
         {
             try
             {
-                var response = await _container.UpsertItemAsync(docsPerThread, new PartitionKey(docsPerThread.Id));
+                var response = await _documentsPerThreadContainer.UpsertItemAsync(docsPerThread, new PartitionKey(docsPerThread.UserId));
                 if (response.StatusCode != System.Net.HttpStatusCode.Created && response.StatusCode != System.Net.HttpStatusCode.OK)
                 {
                     throw new Exception("Failed to add document to Document Registry");
@@ -49,18 +52,39 @@ namespace Infrastructure
             }
         }
 
-        public async Task<string> UpdateDocumentAsync(DocumentResult docsPerThread)
+        public async Task<string> AddExtractedDocumentAsync(DocumentResult docsPerThread)
         {
-            var response = await _container.ReplaceItemAsync<DocumentResult>(docsPerThread, docsPerThread.Id, new PartitionKey(docsPerThread.Id));
+            try
+            {
+                var response = await _extractedDocumentsContainer.UpsertItemAsync(docsPerThread, new PartitionKey(docsPerThread.Id));
+                if (response.StatusCode != System.Net.HttpStatusCode.Created && response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    throw new Exception("Failed to add document to Document Registry");
+                }
+                return response.Resource.Id;
+            }
+            catch (CosmosException cosmosEx)
+            {
+                throw cosmosEx;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<string> UpdateDocumentAsync(DocsPerThread docsPerThread)
+        {
+            var response = await _documentsPerThreadContainer.ReplaceItemAsync<DocsPerThread>(docsPerThread, docsPerThread.Id, new PartitionKey(docsPerThread.Id));
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
                 throw new Exception("Failed to change document");
             }
             return response.Resource.Id;
         }
-        public async Task<bool> DeleteDocumentAsync(DocumentResult docsPerThread)
+        public async Task<bool> DeleteDocumentAsync(DocsPerThread docsPerThread)
         {
-            var response = await _container.DeleteItemAsync<DocumentResult>(docsPerThread.Id, new PartitionKey(docsPerThread.Id));
+            var response = await _documentsPerThreadContainer.DeleteItemAsync<DocsPerThread>(docsPerThread.Id, new PartitionKey(docsPerThread.Id));
             if (response.StatusCode != System.Net.HttpStatusCode.NoContent)
             {
                 throw new Exception("Failed to delete document");
@@ -90,12 +114,12 @@ namespace Infrastructure
             }
         }
 
-        public async Task<bool> RemoveDocumentAsync(DocumentResult document)
+        public async Task<bool> RemoveDocumentAsync(DocsPerThread document)
         {
             return await MarkDocumentAsDeletedAsync(document.Id);
         }
 
-        public async Task<bool> RemoveDocumentFromThreadAsync(List<DocumentResult> documents)
+        public async Task<bool> RemoveDocumentFromThreadAsync(List<DocsPerThread> documents)
         {
             foreach (var document in documents)
             {
@@ -120,7 +144,7 @@ namespace Infrastructure
 
             try
             {
-                var response = await _container.PatchItemAsync<DocumentResult>(documentId, new PartitionKey(documentId), patchOperations);
+                var response = await _documentsPerThreadContainer.PatchItemAsync<DocsPerThread>(documentId, new PartitionKey(documentId), patchOperations);
                 return response.StatusCode == System.Net.HttpStatusCode.OK;
             }
             catch (CosmosException ex)
@@ -130,9 +154,9 @@ namespace Infrastructure
             }
         }
 
-        public async Task<List<DocumentResult>> GetDocsPerThreadAsync(string documentId)
+        public async Task<List<DocumentResult>> GetExtractedDataFromDocument(string documentId)
         {
-            var queryable = _container.GetItemLinqQueryable<DocumentResult>(requestOptions: new QueryRequestOptions { MaxItemCount = 500 })
+            var queryable = _extractedDocumentsContainer.GetItemLinqQueryable<DocumentResult>(requestOptions: new QueryRequestOptions { MaxItemCount = 500 })
                                       .Where(d => d.Id == documentId);
 
             var documents = new List<DocumentResult>();
@@ -148,9 +172,27 @@ namespace Infrastructure
             return documents;
         }
 
-        public Task<string> AddDocumentToThreadAsync(BlobDocumenResult docsPerThread)
+        public async Task<List<DocsPerThread>> GetDocsPerThreadAsync(string threadId)
         {
-            throw new NotImplementedException();
+            var queryable = _documentsPerThreadContainer.GetItemLinqQueryable<DocsPerThread>(requestOptions: new QueryRequestOptions { MaxItemCount = 500 })
+                                      .Where(d => d.ThreadId == threadId && d.Deleted == false);
+
+            var documents = new List<DocsPerThread>();
+            using (var iterator = queryable.ToFeedIterator())
+            {
+                while (iterator.HasMoreResults)
+                {
+                    var response = await iterator.ReadNextAsync();
+                    documents.AddRange(response);
+                }
+            }
+
+            return documents;
         }
+
+        //public Task<string> AddDocumentToThreadAsync(BlobDocumenResult docsPerThread)
+        //{
+        //    throw new NotImplementedException();
+        //}
     }
 }

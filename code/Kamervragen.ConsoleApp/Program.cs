@@ -69,7 +69,8 @@ _kernel = kernelBuilder.Build();
 
 var searchClient = new SearchClient(new Uri(configuration["Search:Endpoint"]), configuration["Search:IndexName"], azureCredential);
 string query = "wat zijn alle vragen en antwoorden in dit document";
-documentIds.Add("3eb05ed7-d3dc-44d4-89ba-64e906f23fcc");
+//documentIds.Add("42ee1ecd-7603-400e-97f0-6a4c7ee7ef80");
+documentIds.Add("67c79330-ce24-4d63-9bf8-1bb51ddd6cac");
 
 foreach (string documentId in documentIds)
 {
@@ -91,8 +92,6 @@ foreach (string documentId in documentIds)
                             QueryCaption = new(QueryCaptionType.Extractive),
                             QueryAnswer = new(QueryAnswerType.Extractive),
                             SemanticQuery = query,
-                            // Fix for CS0200: Use Add method to add items to the read-only collection
-                            //SemanticFields = { "content" }
                         },
                         Size = 100,
                         Filter = filterString,
@@ -182,7 +181,7 @@ foreach (string documentId in documentIds)
     string parsedDocumentId = documentResult.Id;
     documentResult.Id = documentId;
 
-    var addedDoc = await documentRegistry.AddDocumentToThreadAsync(documentResult);
+    var addedDoc = await documentRegistry.AddExtractedDocumentAsync(documentResult);
 
     //if (addedDoc != null)
     //{

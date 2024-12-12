@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { Checkmark12Regular, ClipboardTaskList16Regular, CopyRegular, Dismiss24Regular, Lightbulb16Filled, Lightbulb16Regular } from '@fluentui/react-icons';
 import { ThoughtProcess } from './ThoughtProcess';
 import DocumentQAViewer from './DocumentQAViewer';
+import { SelectedQAPair } from '../Search/QuestionAnswerList';
 
 const useClasses = makeStyles({
     userContainer: {
@@ -101,13 +102,11 @@ const useClasses = makeStyles({
 type messageProps = {
     message: IChatMessage;
     onFollowUp: (question: string) => void;
+    onQASelected: (selectedPairs: SelectedQAPair[]) => void;
     selectedChatId: string | undefined; // Add this line
-
 }
 
-
-
-export function Message({ message, onFollowUp, selectedChatId }: messageProps) {
+export function Message({ message, selectedChatId, onFollowUp, onQASelected }: messageProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
     const [copied, setCopied] = useState(false);
@@ -131,6 +130,10 @@ export function Message({ message, onFollowUp, selectedChatId }: messageProps) {
     
     const classes = useClasses();
 
+    const onQAPairsSelected = (selectedPairs: SelectedQAPair[]) => {
+        onQASelected(selectedPairs);
+    }
+
     const handleCopy = () => {
         // Single replace to remove all HTML tags to remove the citations
         const textToCopy = parsedAnswer.replace(/<a [^>]*><sup>\d+<\/sup><\/a>|<[^>]+>/g, "");
@@ -144,17 +147,12 @@ export function Message({ message, onFollowUp, selectedChatId }: messageProps) {
             .catch(err => console.error("Failed to copy text: ", err));
     };
 
-   const uniqueDocumentIds = Array.from(
-  new Set(
-    (message.citations && message.citations.map(citation => citation.id)) || []
-  )
-);
-
-
-    function handleQAPairsSelected(documentId: string, selectedPairs: SelectedQAPair[]): void {
-        console.log(`Selected Q&A pairs for document ${documentId}:`, selectedPairs);
-        // You can add more logic here to handle the selected Q&A pairs, such as updating the state or making an API call
-    }
+   const uniqueDocumentIds = Array.from(new Set
+    (
+        (message.context?.dataPointsContent && message.context?.dataPointsContent.map(citation => citation.documentId)) 
+        || []
+    )
+    );
 
     return (
         <>
@@ -182,23 +180,23 @@ export function Message({ message, onFollowUp, selectedChatId }: messageProps) {
                                     onClick={() => onSupportingContentClicked()}
                                     
                                 />
-                                <Button
+                                {/* <Button
                                     icon={<ClipboardTaskList16Regular />}
                                     title="Show supporting content"
                                     aria-label="Show supporting content"
                                     onClick={() => onSupportingContentClicked()}
-                                    disabled={!message.dataPointsContent}
-                                />
+                                    disabled={!message.context?.dataPointsContent}
+                                /> */}
                             </Stack>
                         ) : null}
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsedAnswer.markdownText}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                     </div>
                 )}
             </div>
 
-            {message.followupquestions && message.followupquestions.length > 0 && (
+            {message.context?.followup_questions && message.context.followup_questions.length > 0 && (
                 <div className={classes.followUpContainer}>
-                    {message.followupquestions.map((question, index) => (
+                    {message.context.followup_questions.map((question, index) => (
                         <Button key={index} className={classes.followUpButton} onClick={() => onFollowUp(question)}>
                             {question}
                         </Button>
@@ -236,7 +234,7 @@ export function Message({ message, onFollowUp, selectedChatId }: messageProps) {
                                         headerText="Thought Process"
                                         >
                                          <Stack horizontalAlign="center">
-                                            <ThoughtProcess thoughts={message.thougths!} />
+                                            <ThoughtProcess thoughts={message.context?.thoughts || []} />
                                         </Stack>
                                     </PivotItem>
                                     <PivotItem
@@ -249,7 +247,7 @@ export function Message({ message, onFollowUp, selectedChatId }: messageProps) {
                                             <DocumentQAViewer
                                             documentId={document}
                                             chatId={selectedChatId}
-                                            onQAPairsSelected={handleQAPairsSelected}
+                                            onQAPairsSelected={onQAPairsSelected}
                                             />
                                         </div>
                                         ))}
@@ -260,17 +258,17 @@ export function Message({ message, onFollowUp, selectedChatId }: messageProps) {
                                         headerText="Data Points"
                                         >
                                         <Stack horizontalAlign="center">
-                                        {message.citations && message.citations.map((citation, index) => (
+                                        {message.context?.dataPointsContent && message.context.dataPointsContent.map((citation, index) => (
                                             <div key={index} className={classes.supportingContentContainer}>
                                                 <Stack horizontalAlign="center">
                                                 <Text className={classes.subheader}>
-                                                    DocumentId {citation.documentId.length > 50 ? citation.documentId.substring(0, 50) + '...' : citation.documentId}
+                                                    {/* FileName {citation.fileName.length > 50 ? citation.fileName.substring(0, 50) + '...' : citation.fileName} */}
                                                 </Text>
                                                 <Text className={classes.subheader}>
                                                     Page {citation.pageNumber.length > 50 ? citation.pageNumber.substring(0, 50) + '...' : citation.pageNumber}
                                                 </Text>
                                                 <Text className={classes.subheader}>
-                                                    Id {citation.id.length > 50 ? citation.id.substring(0, 50) + '...' : citation.id}
+                                                    Id {citation.documentId.length > 50 ? citation.documentId.substring(0, 50) + '...' : citation.documentId}
                                                 </Text>
                                                 </Stack>
                                                 <Text key={index} className={classes.citation}>

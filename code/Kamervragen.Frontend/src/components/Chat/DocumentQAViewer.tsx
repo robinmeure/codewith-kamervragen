@@ -6,11 +6,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { Stack, Text } from '@fluentui/react';
 import { TagGroup, Tag, makeStyles, tokens, Card, CardHeader, CardPreview } from '@fluentui/react-components';
 
-interface DocumentQAViewerProps {
-  documentId: string;
-  chatId: string | undefined;
-  onQAPairsSelected: (documentId: string, selectedPairs: SelectedQAPair[]) => void;
-}
 
 const useStyles = makeStyles({
   container: {
@@ -46,13 +41,13 @@ highlights: {
   flexGrow: 1,
 },
 supportingContentContainer: {
-  // backgroundColor: tokens.colorNeutralBackground3,
-  // borderRadius: tokens.borderRadiusXLarge,
-  // maxWidth: '80%',
-  // padding: tokens.spacingHorizontalM,
-  // marginTop: "20",
-  // marginBottom: "20px",
-  // boxShadow: tokens.shadow2
+  backgroundColor: tokens.colorNeutralBackground3,
+  borderRadius: tokens.borderRadiusXLarge,
+  maxWidth: '80%',
+  padding: tokens.spacingHorizontalM,
+  marginTop: "20",
+  marginBottom: "20px",
+  boxShadow: tokens.shadow2
 },
 subheader: {
   marginTop: tokens.spacingVerticalS,
@@ -63,6 +58,11 @@ subheader: {
 },
 });
 
+interface DocumentQAViewerProps {
+  documentId: string;
+  chatId: string | undefined;
+  onQAPairsSelected: (selectedPairs: SelectedQAPair[]) => void;
+}
 
 const DocumentQAViewer: React.FC<DocumentQAViewerProps> = ({ documentId, chatId, onQAPairsSelected }) => {
   const { getAnswers, isLoading } = useSearch(chatId);
@@ -79,6 +79,10 @@ const DocumentQAViewer: React.FC<DocumentQAViewerProps> = ({ documentId, chatId,
     }
     try {
       const result = await getAnswers(documentId);
+      if (result === null || result === undefined) {
+        console.warn('No answers found for document:', documentId);
+        return;
+      }
       setDocumentResult(result);
     } catch (error) {
       console.error('Error fetching document answers:', error);
@@ -91,8 +95,8 @@ const DocumentQAViewer: React.FC<DocumentQAViewerProps> = ({ documentId, chatId,
 
   // Memoize the handler to prevent unnecessary re-renders
   const handleSelectionChange = useCallback(
-    (docId: string, selectedPairs: SelectedQAPair[]) => {
-      onQAPairsSelected(docId, selectedPairs);
+    (selectedPairs: SelectedQAPair[]) => {
+      onQAPairsSelected(selectedPairs);
     },
     [onQAPairsSelected]
   );
@@ -106,8 +110,8 @@ const DocumentQAViewer: React.FC<DocumentQAViewerProps> = ({ documentId, chatId,
   }
 
   return (
-    <div key={documentResult.id} className={classes.supportingContentContainer}>
-      <Card>
+    <div key={documentResult.id}>
+      <Card className={classes.supportingContentContainer}>
           <Text variant="large" weight="bold">{documentResult.title}</Text>
           <div className={classes.highlights}>
             <Text>{documentResult.subject}</Text>

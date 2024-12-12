@@ -14,7 +14,6 @@ const useClasses = makeStyles({
         paddingLeft: tokens.spacingVerticalM,
         flexDirection: 'column',
         backgroundColor: tokens.colorNeutralBackground2,
-        height: '100vh'
     },
     headerContainer: {
         height: "48px",

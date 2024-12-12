@@ -34,7 +34,13 @@ export const useChatMessages = (chatId: string | undefined) => {
     }, [messagesResult])
 
 
-    const sendMessage = async ({ message, selectedQAPair }: { message: string, selectedQAPair?:SelectedQAPair[] }) => {
+    const sendMessage = async ({ message, selectedQAPair, includeQA, includeDocs }: 
+        { 
+            message: string, 
+            includeQA?: boolean,
+            includeDocs?: boolean,
+            selectedQAPair?:SelectedQAPair[] 
+        }) => {
 
         if(!chatId) return false; 
         let result = '';
@@ -51,7 +57,7 @@ export const useChatMessages = (chatId: string | undefined) => {
             return updated;
         });
 
-        const response = await chatService.sendMessageAsync({chatId,message, selectedQAPair, token: accessToken});
+        const response = await chatService.sendMessageAsync({chatId,message, selectedQAPair, includeQA, includeDocs, token: accessToken});
         
         if (!response || !response.body) {
             return false;
@@ -59,8 +65,7 @@ export const useChatMessages = (chatId: string | undefined) => {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
-        const loop = true;
-        while (loop)
+        while (true)
         {
             const { value, done } = await reader.read();
             if (done) {
@@ -68,23 +73,15 @@ export const useChatMessages = (chatId: string | undefined) => {
             }
             const decodedChunk = decoder.decode(value);
             const chunk = JSON.parse(decodedChunk);
-            result += chunk.message.content
+            result += chunk
             setMessages(prev => {
                 const updated = [...prev];
                 updated[updated.length - 1] = {
                     role: 'assistant',
-                    content: result,
-                    followupquestions:chunk.context.followup_questions,                    
-                    thougths: chunk.context.thoughts,
-                    citations: chunk.context.dataPointsContent
-                    ? chunk.context.dataPointsContent.map((dataPoint: any) => ({
-                        id: dataPoint.documentId,
-                        documentId: dataPoint.fileName,
-                        pageNumber: dataPoint.pageNumber,
-                        title: dataPoint.title,
-                        content: dataPoint.content,
-                    }))
-                    : [],
+                    content: chunk.content,
+                    context: chunk.context,
+                    id:chunk.id,
+                    timestamp:chunk.created
                 };
                 return updated;
             });

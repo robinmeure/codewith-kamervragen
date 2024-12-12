@@ -251,6 +251,16 @@ namespace Infrastructure
             return messages;
         }
 
+        public async Task<bool> PostMessageAsync(string userId, ThreadMessage message)
+        {
+            var response = await _container.CreateItemAsync<ThreadMessage>(message, new PartitionKey(userId));
+            if (response.StatusCode != System.Net.HttpStatusCode.Created)
+            {
+                throw new Exception("Failed to create a new thread.");
+            }
+            return true;
+        }
+
         public async Task<bool> PostMessageAsync(string userId, string threadId, string message, string role)
         {
             string messageId = Guid.NewGuid().ToString();
@@ -276,28 +286,28 @@ namespace Infrastructure
             return true;
         }
 
-        public async Task<bool> PostMessageAsync(string userId, string threadId, ResponseChoice message)
-        {
-            ThreadMessage newMessage = new()
-            {
+        //public async Task<bool> PostMessageAsync(string userId, string threadId, ResponseContext message)
+        //{
+        //    ThreadMessage newMessage = new()
+        //    {
 
-                Id = message.Id,
-                Type = "CHAT_MESSAGE",
-                ThreadId = threadId,
-                UserId = userId,
-                Role = message.Message.Role,
-                Content = message.Message.Content,
-                ResponseChoice = message,
-                Created = DateTime.Now
-            };
+        //        Id = message.Id,
+        //        Type = "CHAT_MESSAGE",
+        //        ThreadId = threadId,
+        //        UserId = userId,
+        //        Role = message.Message.Role,
+        //        Content = message.Message.Content,
+        //        ResponseContext = message,
+        //        Created = DateTime.Now
+        //    };
 
-            var response = await _container.CreateItemAsync<ThreadMessage>(newMessage, new PartitionKey(userId));
-            if (response.StatusCode != System.Net.HttpStatusCode.Created)
-            {
-                throw new Exception("Failed to create a new thread.");
-            }
-            return true;
-        }
+        //    var response = await _container.CreateItemAsync<ThreadMessage>(newMessage, new PartitionKey(userId));
+        //    if (response.StatusCode != System.Net.HttpStatusCode.Created)
+        //    {
+        //        throw new Exception("Failed to create a new thread.");
+        //    }
+        //    return true;
+        //}
 
     }
 }
