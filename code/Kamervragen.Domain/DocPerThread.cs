@@ -4,6 +4,8 @@ public record DocsPerThread
 {
     [JsonProperty(PropertyName = "id")]
     public required string Id { get; set; }
+    [JsonProperty(PropertyName = "documentId")]
+    public required string DocumentId { get; set; }
 
     [JsonProperty(PropertyName = "threadId")]
     public required string ThreadId { get; set; }

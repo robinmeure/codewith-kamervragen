@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -12,8 +13,10 @@ using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 using Azure.Search.Documents.Indexes.Models;
 using Azure.Search.Documents.Models;
-using Domain;
+using Kamervragen.Domain.Blob;
+using Kamervragen.Domain.Search;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -31,6 +34,7 @@ namespace Infrastructure
 
         private string indexerName;
         private string indexName;
+        private bool useSemanticRanker = false;
 
         private readonly string semanticSearchConfigName = "2nd";
         private readonly string language = "NL-nl";
@@ -42,6 +46,7 @@ namespace Infrastructure
 
             indexerName = configuration.GetValue<string>("Search:IndexerName") ?? "onyourdata-indexer";
             indexName = configuration.GetValue<string>("Search:IndexName") ?? "onyourdata";
+            //useSemanticRanker = configuration.GetValue<bool>("Search:UseSemanticRanker");
 
             _indexClient = indexClient;
             _searchClient = indexClient.GetSearchClient(indexName);
@@ -113,9 +118,9 @@ namespace Infrastructure
             return docsPerThreads;
         }
 
-        public async Task<List<IndexDoc>> SearchForDocuments(string query, List<string>? documentIds = null)
+        public async Task<List<TweedeKamerVragenDoc>> SearchForDocuments(string query, List<string>? documentIds = null)
         {
-            List<IndexDoc> docs = new List<IndexDoc>();
+            List<TweedeKamerVragenDoc> docs = new List<TweedeKamerVragenDoc>();
 
             // Construct filter string for multiple document IDs if provided
             string? filterString = null;
@@ -124,9 +129,11 @@ namespace Infrastructure
                 filterString = string.Join(" or ", documentIds.Select(id => $"documentId eq '{id}'"));
             }
 
-            SearchResults<IndexDoc> response = await _searchClient.SearchAsync<IndexDoc>(
-                query,
-                new SearchOptions
+            SearchOptions searchOptions = new SearchOptions();
+
+            if (useSemanticRanker)
+            {
+                searchOptions = new SearchOptions
                 {
                     SemanticSearch = new()
                     {
@@ -134,85 +141,77 @@ namespace Infrastructure
                         QueryCaption = new(QueryCaptionType.Extractive),
                         QueryAnswer = new(QueryAnswerType.Extractive),
                         SemanticQuery = query,
-                        // Fix for CS0200: Use Add method to add items to the read-only collection
-                        //SemanticFields = { "content" }
                     },
-                    Size = 5,
-                    Filter = $"threadId eq null",
+                    Size = 10,
+                    Filter = filterString,
                     QueryLanguage = "NL-nl",
-                    QueryType = SearchQueryType.Semantic
-                });
-
-            await foreach (SearchResult<IndexDoc> searchResult in response.GetResultsAsync())
-            {
-                // this is to ensure only the 'real' relevant documents are being returned
-                if (searchResult.SemanticSearch.RerankerScore < 1 || searchResult.SemanticSearch.RerankerScore == null)
-                    continue;
-                if (searchResult.SemanticSearch.Captions != null)
+                    QueryType = SearchQueryType.Semantic,
+                   // Select = { selectedFields }
+                };
+                searchOptions.VectorSearch = new()
                 {
-                    searchResult.Document.Highlights = new List<string>();
-                    foreach (var caption in searchResult.SemanticSearch.Captions)
-                    {
-                        if (string.IsNullOrEmpty(caption.Highlights))
-                            searchResult.Document.Highlights.Add(caption.Text);
-                        else
-                            searchResult.Document.Highlights.Add(caption.Highlights);
-                    }
-                }
-                searchResult.Document.Score = searchResult.SemanticSearch.RerankerScore ?? 0;
+                    Queries = {
+                        new VectorizableTextQuery(text: query)
+                        {
+                            KNearestNeighborsCount = 3,
+                            Fields = { "content_vector" },
+                            Exhaustive = true
+                        }
+                    },
+                };
+            }
+            else
+            {
+                searchOptions = new SearchOptions
+                {
+                    Size =50,
+                    Filter = filterString,
+                    QueryLanguage = "NL-nl",
+                    QueryType = SearchQueryType.Full,
+                    //Select = { selectedFields }
+                };
+                searchOptions.VectorSearch = new()
+                {
+                    Queries = {
+                        new VectorizableTextQuery(text: query)
+                        {
+                            KNearestNeighborsCount = 3,
+                            Fields = { "content_vector" },
+                            Exhaustive = true
+                        }
+                    },
+                };
+            }
+
+            SearchResults<TweedeKamerVragenDoc> response = await _searchClient.SearchAsync<TweedeKamerVragenDoc>(query, searchOptions);
+
+            await foreach (SearchResult<TweedeKamerVragenDoc> searchResult in response.GetResultsAsync())
+            {
                 docs.Add(searchResult.Document);
             }
 
-            if (response.SemanticSearch.Answers != null)
-            {
-                foreach (QueryAnswerResult result in response.SemanticSearch.Answers)
-                {
-                    var matchingDoc = docs.FirstOrDefault(doc => doc.ChunkId == result.Key);
-                    if (matchingDoc != null)
-                    {
-                        var indexDoc = new IndexDoc
-                        {
-                            Answer = result.Text,
-                            DocumentId = matchingDoc.DocumentId,
-                            ChunkId = result.Key,
-                            Content = result.Text,
-                            FileName = matchingDoc.FileName,
-                            Score = result.Score ?? 0
-                        };
-                        docs.Add(indexDoc);
-                    }
-                }
-            }
-
-            docs = docs.OrderByDescending(doc => doc.Score).ToList();
             return docs;
         }
 
-        public async Task<List<IndexDoc>> QueryDocumentAsync(string documentId)
+        public async Task<List<TweedeKamerVragenDoc>> QueryDocumentAsync(string documentId)
         {
-            List<IndexDoc> searchResults = new List<IndexDoc>();
+            List<TweedeKamerVragenDoc> searchResults = new List<TweedeKamerVragenDoc>();
 
             string? filterString = string.Format("documentId eq '{0}'", documentId);
             string query = "wat zijn alle vragen en antwoorden in dit document";
 
-            SearchResults<IndexDoc> response = await _searchClient.SearchAsync<IndexDoc>(
-                query,
-                new SearchOptions
-                {
-                    SemanticSearch = new()
-                    {
-                        SemanticConfigurationName =semanticSearchConfigName,
-                        QueryCaption = new(QueryCaptionType.Extractive),
-                        QueryAnswer = new(QueryAnswerType.Extractive),
-                        SemanticQuery = query
-                    },
-                    Size = 100,
-                    Filter = filterString,
-                    QueryLanguage = language,
-                    QueryType = SearchQueryType.Semantic
-                });
+            SearchOptions searchOptions = new SearchOptions();
+            searchOptions = new SearchOptions
+            {
+                Size = 100,
+                Filter = filterString,
+                QueryLanguage = language,
+                QueryType = SearchQueryType.Full
+            };
 
-            await foreach (SearchResult<IndexDoc> searchResult in response.GetResultsAsync())
+            SearchResults<TweedeKamerVragenDoc> response = await _searchClient.SearchAsync<TweedeKamerVragenDoc>(query, searchOptions);
+
+            await foreach (SearchResult<TweedeKamerVragenDoc> searchResult in response.GetResultsAsync())
             {
                 searchResults.Add(searchResult.Document);
             }
@@ -220,79 +219,57 @@ namespace Infrastructure
             return searchResults;
         }
 
-       public async Task<SupportingContentRecord[]> QueryDocumentsAsync(
-       string? query = null,
-       CancellationToken cancellationToken = default,
-       List<string>? documentIds = null
-           )
+        public async Task<bool> Ingest(VraagStukResult document, List<TweedeKamerVragenDoc> chunks)
         {
-            // Construct filter string for multiple document IDs if provided
-            string? filterString = null;
-            if (documentIds != null && documentIds.Any())
+            bool isSuccess = false;
+
+            IndexDocumentsBatch<TweedeKamerVragenDoc> batch = new IndexDocumentsBatch<TweedeKamerVragenDoc>();
+
+            foreach (var chunk in chunks)
             {
-                filterString = string.Join(" or ", documentIds.Select(id => $"id eq '{id}'"));
+                chunk.Intent = document.Intent;
+                chunk.Members = document.Members;
+                chunk.Summary = document.Summary;
+                chunk.QuestionsAndAnswers = document.QuestionsAndAnswers;
+                //debug
+                //chunk.FileName = "2024D1341";
+                var deleteAction = IndexDocumentsAction.Merge(chunk);
+
+                batch.Actions.Add(deleteAction);
             }
 
-            SearchOptions searchOptions = new SearchOptions
+            IndexDocumentsResult result = await _searchClient.IndexDocumentsAsync(batch);
+            return isSuccess;
+        }
+
+        public async Task<List<TweedeKamerVragenDoc>> GetExtractedDocs()
+        { 
+            List<TweedeKamerVragenDoc> tweedeKamerVragenDocs = new List<TweedeKamerVragenDoc>();
+            HashSet<string> documentIds = new HashSet<string>();
+
+            string query = "*";
+            string emptyFilterString = "members eq null";
+
+            SearchOptions searchOptions = new SearchOptions();
+            searchOptions = new SearchOptions
             {
-                SemanticSearch = new()
-                {
-                    SemanticConfigurationName = semanticSearchConfigName,
-                    QueryCaption = new(QueryCaptionType.Extractive),
-                    QueryAnswer = new(QueryAnswerType.Extractive),
-                    SemanticQuery = query
-                },
                 Size = 100,
-                Filter = filterString,
-                QueryLanguage = language,
-                QueryType = SearchQueryType.Semantic,
+                Filter = emptyFilterString,
+                QueryType = SearchQueryType.Simple
             };
 
-            var searchResultResponse = await _searchClient.SearchAsync<SearchDocument>(
-                query, searchOptions, cancellationToken);
-            if (searchResultResponse.Value is null)
+            SearchResults<TweedeKamerVragenDoc> response = await _searchClient.SearchAsync<TweedeKamerVragenDoc>(query, searchOptions);
+            await foreach (SearchResult<TweedeKamerVragenDoc> searchResult in response.GetResultsAsync())
             {
-                throw new InvalidOperationException("fail to get search result");
-            }
-
-            SearchResults<SearchDocument> searchResult = searchResultResponse.Value;
-
-            // Assemble sources here.
-            // Example output for each SearchDocument:
-            // {
-            //   "@search.score": 11.65396,
-            //   "id": "Northwind_Standard_Benefits_Details_pdf-60",
-            //   "content": "x-ray, lab, or imaging service, you will likely be responsible for paying a copayment or coinsurance. The exact amount you will be required to pay will depend on the type of service you receive. You can use the Northwind app or website to look up the cost of a particular service before you receive it.\nIn some cases, the Northwind Standard plan may exclude certain diagnostic x-ray, lab, and imaging services. For example, the plan does not cover any services related to cosmetic treatments or procedures. Additionally, the plan does not cover any services for which no diagnosis is provided.\nIt’s important to note that the Northwind Standard plan does not cover any services related to emergency care. This includes diagnostic x-ray, lab, and imaging services that are needed to diagnose an emergency condition. If you have an emergency condition, you will need to seek care at an emergency room or urgent care facility.\nFinally, if you receive diagnostic x-ray, lab, or imaging services from an out-of-network provider, you may be required to pay the full cost of the service. To ensure that you are receiving services from an in-network provider, you can use the Northwind provider search ",
-            //   "category": null,
-            //   "sourcepage": "Northwind_Standard_Benefits_Details-24.pdf",
-            //   "sourcefile": "Northwind_Standard_Benefits_Details.pdf"
-            // }
-            var sb = new List<SupportingContentRecord>();
-            foreach (var doc in searchResult.GetResults())
-            {
-                doc.Document.TryGetValue("chunk_id", out var sourcePageValue);
-                string? contentValue;
-                try
+                // Only add the document if it is not already in the list
+                // since the result can contain data from a single document which is split into multiple chunks
+                if (documentIds.Add(searchResult.Document.DocumentId))
                 {
-                    var docs = doc.SemanticSearch.Captions.Select(c => c.Text);
-                    contentValue = string.Join(" . ", docs);
-                }
-                catch (ArgumentNullException)
-                {
-                    contentValue = null;
-                }
-
-                string chunkId = sourcePageValue as string;
-                string pageNr = chunkId.Split("sourcePage")[1];
-
-                if (sourcePageValue is string sourcePage && contentValue is string content)
-                {
-                    content = content.Replace('\r', ' ').Replace('\n', ' ');
-                    sb.Add(new SupportingContentRecord(sourcePage, sourcePage, pageNr, content));
+                    tweedeKamerVragenDocs.Add(searchResult.Document);
                 }
             }
 
-            return [.. sb];
+            return tweedeKamerVragenDocs;
         }
     }
 }

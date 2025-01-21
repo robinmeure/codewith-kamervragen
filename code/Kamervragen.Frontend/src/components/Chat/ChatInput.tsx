@@ -1,7 +1,5 @@
-import { Stack } from '@fluentui/react';
-import { makeStyles, tokens, Button, Input, Checkbox, Toolbar } from '@fluentui/react-components';
-import { BroomRegular, Checkmark12Regular, CopyRegular, Document10016Regular, Lightbulb16Regular, Question16Filled, Send24Regular } from '@fluentui/react-icons';
-import { useState } from 'react';
+import { makeStyles, tokens, Button, Input, Toolbar } from '@fluentui/react-components';
+import { BroomRegular, Document10016Regular, Question16Filled, Send24Regular } from '@fluentui/react-icons';
 
 const useClasses = makeStyles({
     container: {
@@ -108,21 +106,21 @@ export function ChatInput({ value, setValue, onSubmit,clearChat, includeQA,
           role="button"
           tabIndex={0}
         />
-        <Input
-          onKeyDown={handleKeyDown}
-          className={classes.input}
-          size="large"
-          value={value}
-          onChange={(_e, data) => setValue(data.value)}
-          placeholder="Type your message..."
-        />
-        <Button
-          className={classes.button}
-          onClick={onSubmit}
-          size="large"
-          icon={<Send24Regular />}
-          aria-label="Send message"
-        />
+      <Input
+        onKeyDown={handleKeyDown}
+        className={classes.input}
+        size="large"
+        value={value}
+        onChange={(_e, data) => setValue(data.value)}
+        placeholder="Type your message..."
+      />
+      <Button
+        className={classes.button}
+        onClick={handleSubmit}
+        size="large"
+        icon={<Send24Regular />}
+        aria-label="Send message"
+      />
       </div>
     </div>
     );

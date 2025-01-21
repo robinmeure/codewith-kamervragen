@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Checkbox, makeStyles, tokens, Text, Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionToggleEventHandler, Tag, TagGroup } from '@fluentui/react-components';
-import { IDocumentResult } from '../../models/DocumentResult';
+import { Checkbox, makeStyles, tokens, Text, Accordion, AccordionHeader, AccordionItem, AccordionPanel, AccordionToggleEventHandler } from '@fluentui/react-components';
+import { IDocumentResult, IQuestions_And_Answers } from '../../models/DocumentResult';
 import Markdown from 'react-markdown';
 
 const useStyles = makeStyles({
@@ -46,18 +46,18 @@ interface QuestionAnswerListProps {
 export interface SelectedQAPair {
   documentId: string;
   question: string;
-  answer: string;
+  answer: string | undefined;
 }
 
 const QuestionAnswerList: React.FC<QuestionAnswerListProps> = ({ document, onSelectionChange }) => {
   const classes = useStyles();
   const [selectedPairs, setSelectedPairs] = useState<SelectedQAPair[]>([]);
   const [openItems, setOpenItems] = React.useState(["1"]);
-  const handleToggle: AccordionToggleEventHandler<string> = (event, data) => {
+  const handleToggle: AccordionToggleEventHandler<string> = (_event, data) => {
     setOpenItems(data.openItems);
   };
   
-  const handleCheckboxChange = (qaPair: { documentId:string, question: string; answer: string }, checked: boolean) => {
+  const handleCheckboxChange = (qaPair: IQuestions_And_Answers, checked: boolean) => {
     let updatedSelectedPairs = [...selectedPairs];
     if (checked) {
       updatedSelectedPairs.push({
@@ -87,7 +87,7 @@ const QuestionAnswerList: React.FC<QuestionAnswerListProps> = ({ document, onSel
         <div key={index} className={classes.qaPair}>
           <Checkbox
             className={classes.checkbox}
-            onChange={(e, data) => handleCheckboxChange(qa, data.checked)}
+            onChange={(e, data) => handleCheckboxChange(qa, data.checked === true)}
           />
           <div>
             

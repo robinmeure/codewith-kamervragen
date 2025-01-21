@@ -4,6 +4,7 @@ import { ISearchDocument } from '../../models/SearchDocument';
 import { IDocumentResult } from '../../models/DocumentResult';
 import QuestionAnswerList, { SelectedQAPair } from './QuestionAnswerList';
 import Markdown from 'react-markdown';
+import QuestionAnswerList2 from './QuestionAnswerList2';
 
 const useClasses = makeStyles({
   container: {
@@ -52,10 +53,10 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ document, onQAPairs
   const [isExpanded, setIsExpanded] = useState(false);
 
   const fetchDocumentResult = async () => {
-    if (!documentResult) {
-      const result = await getAnswers(document.documentId);
-      setDocumentResult(result);
-    }
+    // if (!documentResult) {
+    //   const result = await getAnswers(document.documentId);
+    //   setDocumentResult(result);
+    // }
     setShowQAList(!showQAList);
   };
 
@@ -64,23 +65,23 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ document, onQAPairs
   };
 
  const truncatedContent =
-    document.content.length > 500 ? document.content.substring(0, 500) + '...' : document.content;
+    document.summary.length > 500 ? document.summary.substring(0, 500) + '...' : document.summary;
 
-  const handleSelectionChange = (documentId: string, selectedPairs: SelectedQAPair[]) => {
-    onQAPairsSelected(documentId, selectedPairs);
+  const handleSelectionChange = (selectedPairs: SelectedQAPair[]) => {
+    onQAPairsSelected(document.documentId, selectedPairs);
   };
 
   return (
     <div className={classes.container}>
-      <Text as="h1" className={classes.fileName} title={document.titel}>
+      <Text as="h1" className={classes.fileName} title={document.onderwerp}>
         {document.fileName}
       </Text>
       <div className={classes.highlights}>
-        <Text>{document.highlights}</Text>
+        <Text>{document.onderwerp}</Text>
       </div>
       <div className={classes.content}>
-        <Markdown>{isExpanded ? document.content : truncatedContent}</Markdown>
-        {document.content.length > 500 && (
+        <Markdown>{isExpanded ? document.summary : truncatedContent}</Markdown>
+        {document.summary.length > 500 && (
           <Button appearance="transparent" className={classes.readMoreButton} onClick={handleReadMore}>
             {isExpanded ? 'Read less' : 'Read more'}
           </Button>
@@ -89,25 +90,22 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ document, onQAPairs
       <div className={classes.tags}>
         <TagGroup role="list">
           <Tag role="listitem" size="extra-small" className="mb-2 mr-2">
-            Tweede Kamer
+            {document.members}
           </Tag>
           <Tag role="listitem" size="extra-small" className="mb-2 mr-2">
-            Vraag
+            {document.soort}
           </Tag>  
           <Tag role="listitem" size="extra-small" className="mb-2 mr-2">
-            4967311
+            {document.fileName}
           </Tag>                               
         </TagGroup>
       </div>
-      <Button onClick={fetchDocumentResult} className={classes.button}>
-        {showQAList ? 'Hide' : 'View'} Questions and Answers
-      </Button>
-      {showQAList && documentResult && (
-        <QuestionAnswerList
-          document={documentResult}
-          onSelectionChange={handleSelectionChange}
-        />
-      )}
+      {/* {document.questionandanswers && (
+        // <QuestionAnswerList
+        //   document={document}
+        //   onSelectionChange={handleSelectionChange}
+        // />
+      )} */}
       </div>   
   );
 };

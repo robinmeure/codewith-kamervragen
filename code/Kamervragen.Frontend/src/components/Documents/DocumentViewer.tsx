@@ -45,7 +45,7 @@ type documentViewerProps = {
 
 export function DocumentViewer({ chatId }: documentViewerProps) {
 
-    const { documents, addDocuments, deleteDocument, documentsPending } = useChatDocuments(chatId);
+    const { documents, addDocuments, deleteDocument, analyzeDocument, documentsPending } = useChatDocuments(chatId);
     const classes = useClasses();
 
     return (
@@ -57,7 +57,7 @@ export function DocumentViewer({ chatId }: documentViewerProps) {
             {documentsPending ? (
                 <ListSkeleton/>
             ) : (
-                <DocumentGrid documents={documents} deleteDocument={deleteDocument}/>
+                <DocumentGrid documents={documents} deleteDocument={deleteDocument} analyzeDocument={analyzeDocument}/>
             ) }
             
         </div>

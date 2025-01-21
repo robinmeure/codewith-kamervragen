@@ -1,13 +1,13 @@
 ﻿using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
-namespace Domain
+namespace Kamervragen.Domain.Cosmos
 {
     public record ThreadMessage
     {
         [JsonProperty(PropertyName = "id")]
         public required string Id { get; set; }
-        
+
         [JsonProperty(PropertyName = "userId")]
         public required string UserId { get; set; }
 

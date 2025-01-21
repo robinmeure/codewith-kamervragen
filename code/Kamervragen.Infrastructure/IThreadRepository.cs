@@ -1,4 +1,4 @@
-﻿using Domain;
+﻿using Kamervragen.Domain.Cosmos;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 namespace Infrastructure;
 public interface IThreadRepository
 {
-    Task<List<Domain.Thread>> GetThreadsAsync(string userId);
-    Task<List<Domain.Thread>> GetSoftDeletedThreadAsync(string threadId);
-    Task<Domain.Thread> CreateThreadAsync(string userId);
+    Task<List<Kamervragen.Domain.Cosmos.Thread>> GetThreadsAsync(string userId);
+    Task<List<Kamervragen.Domain.Cosmos.Thread>> GetSoftDeletedThreadAsync(string threadId);
+    Task<Kamervragen.Domain.Cosmos.Thread> CreateThreadAsync(string userId);
     Task<bool> DeleteThreadAsync(string userId, string threadId);
     Task<List<ThreadMessage>> GetMessagesAsync(string userId, string threadId);
     Task<bool> PostMessageAsync(string userId, ThreadMessage message);

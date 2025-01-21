@@ -24,8 +24,9 @@ export function ChatHeader({ selectedTab, setSelectedTab }: chatHeaderType) {
         <div className={classes.header}>
             <TabList selectedValue={selectedTab} onTabSelect={(_e, data) => { setSelectedTab(data.value as string) }}>
                 {/* <Tab value="search">Search</Tab> */}
-                <Tab value="chat">Chat</Tab>
-                <Tab value="documents">Documents</Tab>
+                <Tab value="search">Zoeken</Tab>
+                <Tab value="gen">Vraag Antwoord combinaties</Tab>
+                <Tab value="documents">Mijn documenten</Tab>
             </TabList>
         </div>
     );

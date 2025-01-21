@@ -1,18 +1,15 @@
-import { Field, makeStyles, ProgressBar, tokens, Button, Dialog, DialogActions, DialogBody, DialogContent, DialogSurface, DialogTitle, Drawer, DrawerBody, DrawerHeader, DrawerHeaderTitle, useRestoreFocusSource, useRestoreFocusTarget, Divider } from '@fluentui/react-components';
-import { FontIcon, IconButton, Pivot, PivotItem, Stack, Text} from '@fluentui/react'
-import { ChatAppResponse, Citation, IChatMessage } from '../../models/ChatMessage';
-import Markdown from 'react-markdown';
+import { Field, makeStyles, ProgressBar, tokens, Button, Drawer, DrawerBody, DrawerHeader, DrawerHeaderTitle, useRestoreFocusSource, useRestoreFocusTarget, Caption1, Card, CardHeader } from '@fluentui/react-components';
+import { Icon, Pivot, PivotItem, Stack, Text} from '@fluentui/react'
+import { Citation, IChatMessage } from '../../models/ChatMessage';
 import { parseAnswerToMarkdown } from './AnswerParser';
 import { useMemo, useState } from 'react';
-import { on } from 'events';
-import { link } from 'fs';
 import remarkGfm from 'remark-gfm'; // For extended markdown support
 import ReactMarkdown from 'react-markdown';
-import { useTranslation } from "react-i18next";
-import { Checkmark12Regular, ClipboardTaskList16Regular, CopyRegular, Dismiss24Regular, Lightbulb16Filled, Lightbulb16Regular } from '@fluentui/react-icons';
+import { Checkmark12Regular, ChevronCircleRight16Regular, ChevronCircleRight24Regular, CopyRegular, Dismiss24Regular, Lightbulb16Regular, MoreHorizontal20Regular } from '@fluentui/react-icons';
 import { ThoughtProcess } from './ThoughtProcess';
 import DocumentQAViewer from './DocumentQAViewer';
 import { SelectedQAPair } from '../Search/QuestionAnswerList';
+import DocumentQAViewerLocal from './DocumentQAViewerLocal';
 
 const useClasses = makeStyles({
     userContainer: {
@@ -95,48 +92,52 @@ const useClasses = makeStyles({
         marginBottom: tokens.spacingVerticalS,
         marginTop: tokens.spacingVerticalS
 
-    }
-
+    },
+    card: {
+        width: "100%",
+        height: "fit-content",
+        marginBottom: tokens.spacingVerticalS
+    },
+    caption: {
+        color: tokens.colorNeutralForeground3,
+      },
 });
 
 type messageProps = {
     message: IChatMessage;
     onFollowUp: (question: string) => void;
-    onQASelected: (selectedPairs: SelectedQAPair[]) => void;
+    onQASelected: (selectedQAPairs: SelectedQAPair[]) => void;
     selectedChatId: string | undefined; // Add this line
 }
 
 export function Message({ message, selectedChatId, onFollowUp, onQASelected }: messageProps) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
+    // const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedCitation, setSelectedCitation] = useState<any>(null);
     const [copied, setCopied] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
+    const [selectedQAPairs, setSelectedQAPairs] = useState<SelectedQAPair[]>([]);
+    const [isReferenceOpen, setIsReferenceOpen] = useState(false);
     // Overlay Drawer will handle focus by default, but inline Drawers need manual focus restoration attributes, if applicable
-    const restoreFocusTargetAttributes = useRestoreFocusTarget();
     const restoreFocusSourceAttributes = useRestoreFocusSource();
   
     const onSupportingContentClicked = () => {
         setIsOpen(true);
     }
 
-    const handleCitationClick = (citation: Citation) => {
-        setSelectedCitation(citation);
-        setIsModalOpen(true);
-      };
-      const parsedAnswer = useMemo(
-        () => parseAnswerToMarkdown(message),
-        [message]
-      );
     
     const classes = useClasses();
 
     const onQAPairsSelected = (selectedPairs: SelectedQAPair[]) => {
+        // Update local state by appending new pairs
+        setSelectedQAPairs((selectedQAPairs) => [...selectedQAPairs, ...selectedPairs]);
+
+        // Notify parent component to append the new pairs
         onQASelected(selectedPairs);
     }
 
     const handleCopy = () => {
         // Single replace to remove all HTML tags to remove the citations
-        const textToCopy = parsedAnswer.replace(/<a [^>]*><sup>\d+<\/sup><\/a>|<[^>]+>/g, "");
+        const textToCopy = message.content.replace(/<a [^>]*><sup>\d+<\/sup><\/a>|<[^>]+>/g, "");
 
         navigator.clipboard
             .writeText(textToCopy)
@@ -147,15 +148,17 @@ export function Message({ message, selectedChatId, onFollowUp, onQASelected }: m
             .catch(err => console.error("Failed to copy text: ", err));
     };
 
-   const uniqueDocumentIds = Array.from(new Set
-    (
-        (message.context?.dataPointsContent && message.context?.dataPointsContent.map(citation => citation.documentId)) 
-        || []
-    )
-    );
+
+    function onReferenceClicked(index:number): void {
+        if (!message?.context?.dataPointsContent) return;
+        {
+            setSelectedCitation(message.context.dataPointsContent[index]);
+        }
+        setIsReferenceOpen(true);
+    }
 
     return (
-        <>
+        <><>
             <div id={message.id} className={message.role == "user" ? classes.userContainer : classes.assistantContainer}>
                 {message.content == "" ? (
                     <div className={classes.thinkingContainer}>
@@ -166,30 +169,42 @@ export function Message({ message, selectedChatId, onFollowUp, onQASelected }: m
                 ) : (
                     <div className={message.role == "user" ? classes.userTextContainer : classes.assistantTextContainer}>
                         {message.role === "assistant" ? (
-                            <Stack horizontal horizontalAlign="end" className={classes.toolbarContainer} >
+                            <Stack horizontal horizontalAlign="end" className={classes.toolbarContainer}>
                                 <Button
                                     icon={copied ? <Checkmark12Regular /> : <CopyRegular />}
                                     title="Copy answer"
                                     aria-label="Copy answer"
-                                    onClick={handleCopy}
-                                />
+                                    onClick={handleCopy} />
                                 <Button
                                     icon={<Lightbulb16Regular />}
                                     title="Thought Process"
                                     aria-label="ThoughtProcess"
-                                    onClick={() => onSupportingContentClicked()}
-                                    
-                                />
+                                    onClick={() => onSupportingContentClicked()} />
                                 {/* <Button
-                                    icon={<ClipboardTaskList16Regular />}
-                                    title="Show supporting content"
-                                    aria-label="Show supporting content"
-                                    onClick={() => onSupportingContentClicked()}
-                                    disabled={!message.context?.dataPointsContent}
-                                /> */}
+                        icon={<ClipboardTaskList16Regular />}
+                        title="Show supporting content"
+                        aria-label="Show supporting content"
+                        onClick={() => onSupportingContentClicked()}
+                        disabled={!message.context?.dataPointsContent}
+                    /> */}
                             </Stack>
                         ) : null}
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                        <div className='citations'>
+                            {message.context?.dataPointsContent && message.context.dataPointsContent.map((citation, index) => (
+                                <Card className={classes.card} size="small" role="listitem">
+                                    <CardHeader
+                                        header={<Text>{citation.fileName}</Text>}
+                                        description={<Caption1 className={classes.caption}>
+                                            {citation.onderwerp}
+                                        </Caption1>}
+                                        action={<Button
+                                            onClick={() => onReferenceClicked(index)}
+                                            appearance="transparent"
+                                            icon={<ChevronCircleRight24Regular />} />} />
+                                </Card>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
@@ -209,79 +224,59 @@ export function Message({ message, selectedChatId, onFollowUp, onQASelected }: m
                 type="overlay"
                 position='end'
                 size='large'
+                separator
+                open={isReferenceOpen}
+                onOpenChange={(_, { open }) => setIsReferenceOpen(open)}
+            >
+                <DrawerHeader>
+                    <DrawerHeaderTitle
+                        action={<Button
+                            appearance="subtle"
+                            aria-label="Close"
+                            icon={<Dismiss24Regular />}
+                            onClick={() => setIsReferenceOpen(false)} />}
+                    >
+                        
+                    </DrawerHeaderTitle>
+                </DrawerHeader>
+                <DrawerBody>
+                {selectedCitation && (
+                    <DocumentQAViewerLocal
+                    document={selectedCitation}
+                    chatId={selectedChatId}
+                    onQAPairsSelected={onQAPairsSelected} />
+                      )}
+                </DrawerBody>
+            </Drawer></><Drawer
+                {...restoreFocusSourceAttributes}
+                type="overlay"
+                position='end'
+                size='large'
 
                 separator
                 open={isOpen}
                 onOpenChange={(_, { open }) => setIsOpen(open)}
             >
-                    <DrawerHeader>
-                        <DrawerHeaderTitle
-                            action={<Button
-                                appearance="subtle"
-                                aria-label="Close"
-                                icon={<Dismiss24Regular />}
-                                onClick={() => setIsOpen(false)} />}
-                        >
-                            Supporting content
-                        </DrawerHeaderTitle>
-                    </DrawerHeader>
-                    <DrawerBody>
-                        <div>
-                            <div className={classes.userContainer}>
-                                <Pivot>
-                                <PivotItem
-                                        itemKey="thoughtProcess"
-                                        headerText="Thought Process"
-                                        >
-                                         <Stack horizontalAlign="center">
-                                            <ThoughtProcess thoughts={message.context?.thoughts || []} />
-                                        </Stack>
-                                    </PivotItem>
-                                    <PivotItem
-                                        itemKey="questionsAndAnswers"
-                                        headerText="Questions and Answers"
-                                        >
-                                        <Stack horizontalAlign="center">
-                                        {uniqueDocumentIds.map((document, index) => (
-                                        <div key={index}>
-                                            <DocumentQAViewer
-                                            documentId={document}
-                                            chatId={selectedChatId}
-                                            onQAPairsSelected={onQAPairsSelected}
-                                            />
-                                        </div>
-                                        ))}
-                                        </Stack>
-                                    </PivotItem>
-                                    <PivotItem
-                                        itemKey="dataPoints"
-                                        headerText="Data Points"
-                                        >
-                                        <Stack horizontalAlign="center">
-                                        {message.context?.dataPointsContent && message.context.dataPointsContent.map((citation, index) => (
-                                            <div key={index} className={classes.supportingContentContainer}>
-                                                <Stack horizontalAlign="center">
-                                                <Text className={classes.subheader}>
-                                                    {/* FileName {citation.fileName.length > 50 ? citation.fileName.substring(0, 50) + '...' : citation.fileName} */}
-                                                </Text>
-                                                <Text className={classes.subheader}>
-                                                    Page {citation.pageNumber.length > 50 ? citation.pageNumber.substring(0, 50) + '...' : citation.pageNumber}
-                                                </Text>
-                                                <Text className={classes.subheader}>
-                                                    Id {citation.documentId.length > 50 ? citation.documentId.substring(0, 50) + '...' : citation.documentId}
-                                                </Text>
-                                                </Stack>
-                                                <Text key={index} className={classes.citation}>
-                                                    {citation.content}
-                                                </Text>
-                                            </div>
-                                        ))}
-                                        </Stack>
-                                    </PivotItem>
-                                </Pivot>
-                            </div>
+                <DrawerHeader>
+                    <DrawerHeaderTitle
+                        action={<Button
+                            appearance="subtle"
+                            aria-label="Close"
+                            icon={<Dismiss24Regular />}
+                            onClick={() => setIsOpen(false)} />}
+                    >
+                        Supporting content
+                    </DrawerHeaderTitle>
+                </DrawerHeader>
+                <DrawerBody>
+                    <div>
+                        <div className={classes.userContainer}>
+                            <Stack horizontalAlign="center">
+                                <ThoughtProcess thoughts={message.context?.thoughts || []} />
+                            </Stack>
                         </div>
-                    </DrawerBody>
+                    </div>
+                </DrawerBody>
             </Drawer></>
      
     );

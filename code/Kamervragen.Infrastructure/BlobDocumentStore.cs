@@ -1,7 +1,6 @@
 ﻿using Azure.Identity;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using Domain;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -36,7 +35,7 @@ namespace Infrastructure
             {
                 { "threadId", threadId },
                 { "documentId", documentId },
-                { "originalFilename", documentName }
+                { "filename", documentName }
             };
             blobClient.SetMetadata(metadata);
 
@@ -44,6 +43,7 @@ namespace Infrastructure
             DocsPerThread docsPerThread = new()
             {
                 Id = documentId,
+                DocumentId = documentId,
                 ThreadId = threadId,
                 DocumentName = documentName,
                 UserId = userId,
@@ -91,6 +91,25 @@ namespace Infrastructure
         public Task UpdateDocumentAsync(string documentName, string documentUri)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<List<string>> GetDocumentIdsFromBlob(string folder)
+        {
+            List<string> documentIds = new List<string>();
+            var blobContainerClient = _blobServiceClient.GetBlobContainerClient(folder);
+
+            await foreach (BlobItem blobItem in blobContainerClient.GetBlobsAsync())
+            {
+                var blobClient = blobContainerClient.GetBlobClient(blobItem.Name);
+                BlobProperties properties = await blobClient.GetPropertiesAsync();
+
+                if (properties.Metadata.TryGetValue("documentId", out string documentId))
+                {
+                    documentIds.Add(documentId);
+                }
+            }
+
+            return documentIds;
         }
     }
 }

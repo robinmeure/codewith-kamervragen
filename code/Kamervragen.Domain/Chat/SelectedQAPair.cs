@@ -4,11 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Kamervragen.Domain
+namespace Kamervragen.Domain.Chat
 {
-    public class AnswerAndThougthsResponse
+    public record SelectedQAPair
     {
+        public required string DocumentId { get; set; }
+        public required string Question { get; set; }
         public required string Answer { get; set; }
-        public required string Thoughts { get; set; }
     }
 }

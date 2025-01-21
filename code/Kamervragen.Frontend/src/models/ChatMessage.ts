@@ -1,3 +1,5 @@
+import { IQuestions_And_Answers } from "./DocumentResult";
+
 export interface IChatMessage {
     id?: string,
     role: string,
@@ -46,6 +48,12 @@ export type DataPointsContent =
     content: string;
     documentId: string;
     pageNumber: string;
+    datum:string;
+    members:string;
+    subject:string;
+    onderwerp:string;
+    summary:string;
+    questionsAndAnswers:IQuestions_And_Answers[];
 }
 
 export type ResponseContext = {

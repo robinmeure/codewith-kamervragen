@@ -1,5 +1,4 @@
-﻿using Domain;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -16,4 +15,6 @@ public interface IDocumentStore
     Task<bool> DocumentExistsAsync(string documentName, string folder);
     Task<IEnumerable<string>> GetDocumentsAsync(string threadId, string folder);
     Task UpdateDocumentAsync(string documentName, string documentUri);
+
+    Task<List<string>> GetDocumentIdsFromBlob(string folder);
 }

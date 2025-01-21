@@ -1,3 +1,10 @@
+import { IChatMessage, Citation } from "../../models/ChatMessage";
+
+interface MarkdownParsedAnswer {
+  markdownText: string;
+  citations: Citation[];
+}
+
 export function parseAnswerToMarkdown(answer: IChatMessage): MarkdownParsedAnswer {
     const citations: Citation[] = [];
     let markdownText = answer.content.trim();
@@ -6,7 +13,7 @@ export function parseAnswerToMarkdown(answer: IChatMessage): MarkdownParsedAnswe
   
     let citationIndex = 0;
     markdownText = markdownText.replace(citationRegex, (match, documentId, pageNumber) => {
-    const citation = answer.citations?.find((c) => {
+    const citation = answer.context?.citations?.find((c) => {
         console.log('Comparing citation:', {
             cDocumentId: c.documentId,
             cPageNumber: c.pageNumber,

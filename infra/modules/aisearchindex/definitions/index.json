@@ -28,6 +28,18 @@
       "synonymMaps": []
     },
     {
+      "name": "threadId",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": false,
+      "filterable": true,
+      "sortable": false,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
       "name": "documentId",
       "type": "Edm.String",
       "key": false,
@@ -36,6 +48,90 @@
       "searchable": true,
       "filterable": true,
       "sortable": true,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "soort",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": true,
+      "sortable": true,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "onderwerp",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": true,
+      "sortable": true,
+      "facetable": false,
+      "synonymMaps": []
+    },   
+    {
+      "name": "vergaderjaar",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": true,
+      "sortable": true,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "datum",
+      "type": "Edm.DateTimeOffset",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": false,
+      "filterable": true,
+      "sortable": true,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "members",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": false,
+      "sortable": false,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "summary",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": false,
+      "sortable": false,
+      "facetable": false,
+      "synonymMaps": []
+    },
+    {
+      "name": "intent",
+      "type": "Edm.String",
+      "key": false,
+      "retrievable": true,
+      "stored": true,
+      "searchable": true,
+      "filterable": false,
+      "sortable": false,
       "facetable": false,
       "synonymMaps": []
     },
@@ -76,6 +172,38 @@
       "synonymMaps": [],
       "dimensions": 3072,
       "vectorSearchProfile": "onyourdata-text-profile"
+    },
+    {
+      "name": "questionandanswers",
+      "type": "Collection(Edm.ComplexType)",
+      "fields": [
+        {
+          "name": "question",
+          "type": "Edm.String",
+          "key": false,
+          "retrievable": true,
+          "stored": true,
+          "searchable": true,
+          "filterable": false,
+          "sortable": false,
+          "facetable": false,
+          "analyzer": "nl.lucene",
+          "synonymMaps": []
+        },
+        {
+          "name": "answer",
+          "type": "Edm.String",
+          "key": false,
+          "retrievable": true,
+          "stored": true,
+          "searchable": true,
+          "filterable": false,
+          "sortable": false,
+          "facetable": false,
+          "analyzer": "nl.lucene",
+          "synonymMaps": []
+        }
+      ]
     }
   ],
   "vectorSearch": {
@@ -125,7 +253,13 @@
           ],
           "prioritizedKeywordsFields": [
             {
+              "fieldName": "onderwerp"
+            },
+            {
               "fieldName": "fileName"
+            },
+            {
+              "fieldName": "soort"
             }
           ]
         }

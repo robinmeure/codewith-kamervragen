@@ -7,29 +7,25 @@ using Infrastructure.Helpers;
 using Infrastructure;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Azure;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Data;
-using Microsoft.SemanticKernel.Connectors.AzureAISearch;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
-using WebApi.Utils;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
 using Microsoft.AspNetCore.Http.Features;
 using WebApi.Extensions;
 
-namespace DocApi
+namespace WebApi
 {
     public class Program
     {
-    
-    public static void Main(string[] args)
+        public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
             // setting the managed identity for the app (locally this reverts back to the VS/VSCode/AZCli credentials)
             DefaultAzureCredentialOptions azureCredentialOptions = DefaultCredentialOptions.GetDefaultAzureCredentialOptions(builder.Environment.EnvironmentName);
             var azureCredential = new DefaultAzureCredential(azureCredentialOptions);
-            
+
+            builder.AddServiceDefaults();
+
             // Setting up the Azure Blob Storage client
             builder.Services.AddAzureClients(clientBuilder =>
             {
@@ -61,13 +57,13 @@ namespace DocApi
 
             // Setting up the Semantic Kernel and AI Search with Vectors and Embeddings
             builder.AddSemanticKernel(azureCredential, null);
-            builder.AddAzureAISearch(azureCredential, null);
 
             // Setting up the interfaces and implentations to be used in the controllers
             builder.Services.AddSingleton<IDocumentRegistry, CosmosDocumentRegistry>();
             builder.Services.AddSingleton<IDocumentStore, BlobDocumentStore>();
             builder.Services.AddSingleton<ISearchService, AISearchService>();
             builder.Services.AddSingleton<IThreadRepository, CosmosThreadRepository>();
+            builder.Services.AddSingleton<IAIService, SemanticKernelService>();
 
             // file upload limit -- need to work on this, still limited to 30MB
             builder.Services.Configure<FormOptions>(options =>

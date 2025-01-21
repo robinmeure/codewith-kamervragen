@@ -1,5 +1,5 @@
 import React from 'react';
-import {Checkbox, makeStyles, tokens, Text, Card, CardHeader } from '@fluentui/react-components';
+import {Checkbox, makeStyles, tokens, Card, CardHeader } from '@fluentui/react-components';
 import { SelectedQAPair } from '../Search/QuestionAnswerList';
 import Markdown from 'react-markdown';
 

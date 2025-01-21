@@ -1,4 +1,5 @@
-﻿using Domain;
+﻿using Kamervragen.Domain.Blob;
+using Kamervragen.Domain.Search;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Linq;
 using Microsoft.Extensions.Configuration;
@@ -24,8 +25,8 @@ namespace Infrastructure
             _client = client;
             _configuration = configuration;
             string databaseName = _configuration.GetValue<string>("Cosmos:DatabaseName") ?? "chats";
-            string extractedDocumentsContainerName = _configuration.GetValue<string>("Cosmos:DocumentContainerName") ?? "documents";
-            string documentsPerThreadContainerName = _configuration.GetValue<string>("Cosmos:DocumentContainerName") ?? "documentsperthread";
+            string extractedDocumentsContainerName = _configuration.GetValue<string>("Cosmos:DocumentsContainerName") ?? "documents";
+            string documentsPerThreadContainerName = _configuration.GetValue<string>("Cosmos:DocumentPerThreadContainerName") ?? "documentsperthread";
 
             _extractedDocumentsContainer = _client.GetContainer(databaseName, extractedDocumentsContainerName);
             _documentsPerThreadContainer = _client.GetContainer(databaseName, documentsPerThreadContainerName);
@@ -44,11 +45,13 @@ namespace Infrastructure
             }
             catch (CosmosException cosmosEx)
             {
-                throw cosmosEx;
+                _logger.LogError(cosmosEx, "CosmosException occurred while adding document to thread.");
+                throw;
             }
             catch (Exception ex)
             {
-                throw ex;
+                _logger.LogError(ex, "Exception occurred while adding document to thread.");
+                throw;
             }
         }
 
@@ -65,33 +68,61 @@ namespace Infrastructure
             }
             catch (CosmosException cosmosEx)
             {
-                throw cosmosEx;
+                _logger.LogError(cosmosEx, "CosmosException occurred while adding extracted document.");
+                throw;
             }
             catch (Exception ex)
             {
-                throw ex;
+                _logger.LogError(ex, "Exception occurred while adding extracted document.");
+                throw;
             }
         }
 
         public async Task<string> UpdateDocumentAsync(DocsPerThread docsPerThread)
         {
-            var response = await _documentsPerThreadContainer.ReplaceItemAsync<DocsPerThread>(docsPerThread, docsPerThread.Id, new PartitionKey(docsPerThread.Id));
-            if (response.StatusCode != System.Net.HttpStatusCode.OK)
+            try
             {
-                throw new Exception("Failed to change document");
+                var response = await _documentsPerThreadContainer.ReplaceItemAsync(docsPerThread, docsPerThread.Id, new PartitionKey(docsPerThread.Id));
+                if (response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    throw new Exception("Failed to change document");
+                }
+                return response.Resource.Id;
             }
-            return response.Resource.Id;
-        }
-        public async Task<bool> DeleteDocumentAsync(DocsPerThread docsPerThread)
-        {
-            var response = await _documentsPerThreadContainer.DeleteItemAsync<DocsPerThread>(docsPerThread.Id, new PartitionKey(docsPerThread.Id));
-            if (response.StatusCode != System.Net.HttpStatusCode.NoContent)
+            catch (CosmosException cosmosEx)
             {
-                throw new Exception("Failed to delete document");
+                _logger.LogError(cosmosEx, "CosmosException occurred while updating document.");
+                throw;
             }
-            return true;
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while updating document.");
+                throw;
+            }
         }
 
+        public async Task<bool> DeleteDocumentAsync(DocsPerThread docsPerThread)
+        {
+            try
+            {
+                var response = await _documentsPerThreadContainer.DeleteItemAsync<DocsPerThread>(docsPerThread.Id, new PartitionKey(docsPerThread.Id));
+                if (response.StatusCode != System.Net.HttpStatusCode.NoContent)
+                {
+                    throw new Exception("Failed to delete document");
+                }
+                return true;
+            }
+            catch (CosmosException cosmosEx)
+            {
+                _logger.LogError(cosmosEx, "CosmosException occurred while deleting document.");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while deleting document.");
+                throw;
+            }
+        }
 
         internal async Task<bool> MarkDocumentAsDeletedAsync(string documentId)
         {
@@ -106,10 +137,12 @@ namespace Infrastructure
             }
             catch (CosmosException cosmosEx)
             {
+                _logger.LogError(cosmosEx, "CosmosException occurred while marking document as deleted.");
                 throw new Exception($"Failed to mark document as deleted: {cosmosEx.Message}", cosmosEx);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Exception occurred while marking document as deleted.");
                 throw new Exception($"An error occurred while marking document as deleted: {ex.Message}", ex);
             }
         }
@@ -149,50 +182,94 @@ namespace Infrastructure
             }
             catch (CosmosException ex)
             {
-                // Handle exception
+                _logger.LogError(ex, "CosmosException occurred while updating document fields.");
                 throw new Exception($"Failed to update document: {ex.Message}", ex);
             }
         }
 
         public async Task<List<DocumentResult>> GetExtractedDataFromDocument(string documentId)
         {
-            var queryable = _extractedDocumentsContainer.GetItemLinqQueryable<DocumentResult>(requestOptions: new QueryRequestOptions { MaxItemCount = 500 })
-                                      .Where(d => d.Id == documentId);
-
-            var documents = new List<DocumentResult>();
-            using (var iterator = queryable.ToFeedIterator())
+            try
             {
-                while (iterator.HasMoreResults)
-                {
-                    var response = await iterator.ReadNextAsync();
-                    documents.AddRange(response);
-                }
-            }
+                var queryable = _extractedDocumentsContainer.GetItemLinqQueryable<DocumentResult>(requestOptions: new QueryRequestOptions { MaxItemCount = 500 })
+                                          .Where(d => d.Id == documentId);
 
-            return documents;
+                var documents = new List<DocumentResult>();
+                using (var iterator = queryable.ToFeedIterator())
+                {
+                    while (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync();
+                        documents.AddRange(response);
+                    }
+                }
+
+                return documents;
+            }
+            catch (CosmosException cosmosEx)
+            {
+                _logger.LogError(cosmosEx, "CosmosException occurred while getting extracted data from document.");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while getting extracted data from document.");
+                throw;
+            }
         }
 
         public async Task<List<DocsPerThread>> GetDocsPerThreadAsync(string threadId)
         {
-            var queryable = _documentsPerThreadContainer.GetItemLinqQueryable<DocsPerThread>(requestOptions: new QueryRequestOptions { MaxItemCount = 500 })
-                                      .Where(d => d.ThreadId == threadId && d.Deleted == false);
-
-            var documents = new List<DocsPerThread>();
-            using (var iterator = queryable.ToFeedIterator())
+            try
             {
-                while (iterator.HasMoreResults)
-                {
-                    var response = await iterator.ReadNextAsync();
-                    documents.AddRange(response);
-                }
-            }
+                var queryable = _documentsPerThreadContainer.GetItemLinqQueryable<DocsPerThread>(requestOptions: new QueryRequestOptions { MaxItemCount = 500 })
+                                          .Where(d => d.ThreadId == threadId && d.Deleted == false);
 
-            return documents;
+                var documents = new List<DocsPerThread>();
+                using (var iterator = queryable.ToFeedIterator())
+                {
+                    while (iterator.HasMoreResults)
+                    {
+                        var response = await iterator.ReadNextAsync();
+                        documents.AddRange(response);
+                    }
+                }
+
+                return documents;
+            }
+            catch (CosmosException cosmosEx)
+            {
+                _logger.LogError(cosmosEx, "CosmosException occurred while getting documents per thread.");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while getting documents per thread.");
+                throw;
+            }
         }
 
-        //public Task<string> AddDocumentToThreadAsync(BlobDocumenResult docsPerThread)
-        //{
-        //    throw new NotImplementedException();
-        //}
+        public async Task<string> AddExtractedDocumentAsync(VraagStukResult docsPerThread)
+        {
+            try
+            {
+                var response = await _extractedDocumentsContainer.UpsertItemAsync(docsPerThread, new PartitionKey(docsPerThread.Id));
+                if (response.StatusCode != System.Net.HttpStatusCode.Created && response.StatusCode != System.Net.HttpStatusCode.OK)
+                {
+                    throw new Exception("Failed to add document to Document Registry");
+                }
+                return response.Resource.Id;
+            }
+            catch (CosmosException cosmosEx)
+            {
+                _logger.LogError(cosmosEx, "CosmosException occurred while adding extracted document.");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception occurred while adding extracted document.");
+                throw;
+            }
+        }
     }
 }

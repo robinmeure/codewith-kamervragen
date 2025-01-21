@@ -112,7 +112,7 @@ const DocumentQAViewer: React.FC<DocumentQAViewerProps> = ({ documentId, chatId,
   return (
     <div key={documentResult.id}>
       <Card className={classes.supportingContentContainer}>
-          <Text variant="large" weight="bold">{documentResult.title}</Text>
+          <Text variant="large">{documentResult.title}</Text>
           <div className={classes.highlights}>
             <Text>{documentResult.subject}</Text>
           </div>

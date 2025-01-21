@@ -1,12 +1,16 @@
 ﻿using System.Text;
 using System.Text.RegularExpressions;
 
-namespace WebApi.Helpers
+namespace Kamervragen.ConsoleApp
 {
     public static class Utilities
     {
         internal static string SanitizeFileName(string fileName)
         {
+            if (string.IsNullOrWhiteSpace(fileName))
+            {
+                return string.Empty;
+            }
             var sanitizedFileName = new StringBuilder();
             foreach (var c in fileName)
             {

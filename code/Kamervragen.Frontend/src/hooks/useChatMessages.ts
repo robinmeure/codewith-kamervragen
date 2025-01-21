@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ChatService } from "../services/ChatService";
-import { SearchService } from "../services/SearchService";
 import { IChatMessage } from "../models/ChatMessage";
 import { useAuth } from "./useAuth";
 import { ISearchDocument } from "../models/SearchDocument";
@@ -11,12 +10,11 @@ import { SelectedQAPair } from "../components/Search/QuestionAnswerList";
 export const useChatMessages = (chatId: string | undefined) => {
 
     const chatService = new ChatService();
-    const searchService = new SearchService();
     const {userId, accessToken} = useAuth();   
 
-    const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
-    const [documents, setDocuments] = useState<ISearchDocument[]>([]);
-    const [answers] = useState<IDocumentResult>();
+    const [selectedDocuments] = useState<string[]>([]);
+    const [documents] = useState<ISearchDocument[]>([]);
+    const [] = useState<IDocumentResult>();
     const [messages, setMessages] = useState<IChatMessage[]>([]);
 
     const { isPending: chatPending, error: chatError, data: messagesResult } = useQuery({

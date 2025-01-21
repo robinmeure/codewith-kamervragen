@@ -7,6 +7,9 @@
 //     organisatie: string,
 //     highlights:string[],
 //     datum:Date
+
+import { IQuestions_And_Answers } from "./DocumentResult";
+
 // }
 export interface ISearchDocument {
     id: string,
@@ -20,5 +23,9 @@ export interface ISearchDocument {
     highlights:string[],
     datum:Date,
     content:string,
-    chunkId:string
+    chunkId:string,
+    summary:string,
+    questionandanswers:IQuestions_And_Answers[],
+    intent:string,
+    members:string
 }

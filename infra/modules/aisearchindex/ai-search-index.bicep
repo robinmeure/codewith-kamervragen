@@ -17,7 +17,7 @@ param embeddingModelName string
 param indexerEmbeddingModelId string
 
 @description('Name of the embedding model to be used for the indexer during querying.')
-param integratedVectorEmbeddingModelId string = 'text-embedding-ada-002'
+param integratedVectorEmbeddingModelId string = 'text-embedding-3-large-query'
 
 @description('URI of the Azure OpenAI resource.')
 param azureOpenAIEndpoint string

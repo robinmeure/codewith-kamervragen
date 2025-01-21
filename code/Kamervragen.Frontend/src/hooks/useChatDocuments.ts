@@ -45,12 +45,23 @@ export const useChatDocuments = (chatId: string | undefined) => {
         }
     });
 
+    const { mutateAsync: analyzeDocument } = useMutation({
+        mutationFn: ({chatId, documentId} : {chatId: string, documentId: string}) => documentService.analyzeDocumentAsync({chatId, documentId, token: accessToken}),
+        onError: () => {
+            console.log('Failed to delete a document.');
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['documents', chatId] });
+        }
+    });
+
     return {
         documentsPending,
         documentsError,
         documents,
         addDocuments,
-        deleteDocument
+        deleteDocument,
+        analyzeDocument
     };
 
 }

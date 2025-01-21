@@ -72,6 +72,31 @@
             "name": "documentId",
             "source": "/document/documentId",
             "inputs": []
+          },
+          {
+            "name": "soort",
+            "source": "/document/soort",
+            "inputs": []
+          },
+          {
+            "name": "onderwerp",
+            "source": "/document/onderwerp",
+            "inputs": []
+          },
+          {
+            "name": "datum",
+            "source": "/document/datum",
+            "inputs": []
+          },
+          {
+            "name": "vergaderjaar",
+            "source": "/document/vergaderjaar",
+            "inputs": []
+          },
+          {
+            "name": "threadId",
+            "source": "/document/threadId",
+            "inputs": []
           }
         ]
       }

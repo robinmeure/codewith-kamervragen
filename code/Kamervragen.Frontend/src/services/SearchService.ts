@@ -36,7 +36,7 @@ export class SearchService {
             });
             if (response.status == 404)
             {
-                return null;
+                return {} as IDocumentResult;
             }
             if (!response.ok) {
                 throw new Error(`Error fetching answers: ${response.statusText}`);

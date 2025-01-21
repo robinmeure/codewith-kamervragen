@@ -52,6 +52,26 @@ export class DocumentService {
         }
     }
 
+    public analyzeDocumentAsync = async ({chatId, documentId, token} : {chatId: string, documentId: string, token: string}): Promise<boolean> => {
+        
+        try {
+            const response = await fetch(`${this.baseUrl}/threads/${chatId}/documents/${documentId}/analyze`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`Error deleting document: ${response.statusText}`);
+            }
+            return true;
+        } catch (error) {
+            console.error('Failed to create chat:', error);
+            return false;
+        }
+    }
+
     public deleteDocumentAsync = async ({chatId, documentId, token} : {chatId: string, documentId: string, token: string}): Promise<boolean> => {
         
         try {

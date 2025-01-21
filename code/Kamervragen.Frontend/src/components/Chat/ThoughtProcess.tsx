@@ -70,7 +70,7 @@ const useClasses = makeStyles({
 
 export const ThoughtProcess = ({ thoughts }: Props) => {
     const classes = useClasses();
-    const jsonstring = JSON.stringify(thoughts, null, 2);
+    // const jsonstring = JSON.stringify(thoughts, null, 2);
 
     return (
         <ul className={classes.tList}>

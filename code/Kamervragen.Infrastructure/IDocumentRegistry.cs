@@ -1,4 +1,4 @@
-﻿using Domain;
+﻿using Kamervragen.Domain.Blob;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;

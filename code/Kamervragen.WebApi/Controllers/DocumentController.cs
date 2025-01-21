@@ -1,17 +1,8 @@
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
-using Domain;
 using Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Identity.Client;
 using Microsoft.Identity.Web.Resource;
-using System.Reflection.Metadata;
-using System.Xml.Linq;
 using WebApi.Helpers;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace WebApi.Controllers
 {
@@ -26,6 +17,7 @@ namespace WebApi.Controllers
         private readonly ISearchService _searchService;
         private readonly ILogger<DocumentController> _logger;
         private readonly IConfiguration _configuration;
+        private readonly SemanticKernelService _semanticKernelService;
         private readonly string _containerName;
         private readonly HashSet<string> _blockedFileExtensions;
 
@@ -34,7 +26,8 @@ namespace WebApi.Controllers
             IDocumentStore blobDocumentStore,
             IDocumentRegistry cosmosDocumentRegistry,
             ISearchService aISearchService,
-            IConfiguration configuration
+            IConfiguration configuration,
+            SemanticKernelService semanticKernelService
             )
         {
             _documentStore = blobDocumentStore;
@@ -42,7 +35,7 @@ namespace WebApi.Controllers
             _searchService = aISearchService;
             _configuration = configuration;
             _logger = logger;
-
+            _semanticKernelService = semanticKernelService;
 
             // Read the container name from configuration
             _containerName = _configuration.GetValue<string>("Storage:ContainerName") ?? "documents";
@@ -51,6 +44,15 @@ namespace WebApi.Controllers
             var blockedExtensions = _configuration.GetSection("BlockedFileExtensions").Get<List<string>>() ?? new List<string>();
             _blockedFileExtensions = new HashSet<string>(blockedExtensions.Select(ext => ext.ToLower()));
 
+        }
+
+        [HttpGet()]
+        public async Task<IEnumerable<TweedeKamerVragenDoc>> GetIndexedDocuments()
+        {
+            // fetch the documents from cosmos which belong to this thread
+            var documents = await _searchService.GetExtractedDocs();
+            // check for the uploaded docs if they are chunked
+            return documents;
         }
 
         [HttpGet()]
@@ -69,6 +71,21 @@ namespace WebApi.Controllers
 
             // check for the uploaded docs if they are chunked
             return await _searchService.IsChunkingComplete(documents);
+        }
+
+        [HttpPost("{documentId}/analyze")]
+        public async Task<IActionResult> AnalyzeDocument([FromRoute] string documentId, [FromRoute] string threadId)
+        {
+            var chunks = await _searchService.QueryDocumentAsync(documentId);
+            if (chunks.FirstOrDefault().Intent != null)
+                return Ok(); // document is already analyzed
+            var extractedDoc = await _semanticKernelService.ExtractDocument(chunks, documentId);
+            if (extractedDoc == null)
+                return NotFound(); // return a 404 if the document is not found in the index
+            bool isSuccess = await _searchService.Ingest(extractedDoc, chunks);
+            if (isSuccess)
+                return Ok();
+            else return StatusCode(500, "Error during ingesting");
         }
 
         [HttpPost()]

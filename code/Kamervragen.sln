@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35521.163 d17.12
+VisualStudioVersion = 17.12.35521.163
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kamervragen.AppHost", "Kamervragen.AppHost\Kamervragen.AppHost.csproj", "{0EA9D1C1-3138-4C32-8728-CDE5B3C9A52B}"
 EndProject
@@ -10,11 +10,21 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kamervragen.Domain", "Kamer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kamervragen.WebApi", "Kamervragen.WebApi\Kamervragen.WebApi.csproj", "{9E9B6ACB-C8F3-4D13-971D-DAC841E80D23}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kamervragen.ConsoleApp", "Kamervragen.ConsoleApp\Kamervragen.ConsoleApp.csproj", "{1751090B-8F2C-49DD-B2CE-30F060F156CB}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kamervragen.Infrastructure", "Kamervragen.Infrastructure\Kamervragen.Infrastructure.csproj", "{9B99CDC6-0D7B-4869-B168-7167643A0ED7}"
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "Kamervragen.Frontend", "Kamervragen.Frontend\Kamervragen.Frontend.esproj", "{9BFC72A5-BCF8-4025-9347-E5EA94DD9BC5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "utils", "utils", "{788E4316-6889-45E0-BAD4-C3C4F7831987}"
+	ProjectSection(SolutionItems) = preProject
+		AddManagedIdentity.ps1 = AddManagedIdentity.ps1
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{4CE3D6B6-B67F-47BD-B00E-CE1FAC56A31C}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kamervragen.ConsoleApp", "Kamervragen.ConsoleApp\Kamervragen.ConsoleApp.csproj", "{EDF3A135-DFC9-4A96-B034-46E6B1FAD840}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,10 +48,6 @@ Global
 		{9E9B6ACB-C8F3-4D13-971D-DAC841E80D23}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9E9B6ACB-C8F3-4D13-971D-DAC841E80D23}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9E9B6ACB-C8F3-4D13-971D-DAC841E80D23}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1751090B-8F2C-49DD-B2CE-30F060F156CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1751090B-8F2C-49DD-B2CE-30F060F156CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1751090B-8F2C-49DD-B2CE-30F060F156CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1751090B-8F2C-49DD-B2CE-30F060F156CB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9B99CDC6-0D7B-4869-B168-7167643A0ED7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9B99CDC6-0D7B-4869-B168-7167643A0ED7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9B99CDC6-0D7B-4869-B168-7167643A0ED7}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -52,6 +58,10 @@ Global
 		{9BFC72A5-BCF8-4025-9347-E5EA94DD9BC5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9BFC72A5-BCF8-4025-9347-E5EA94DD9BC5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9BFC72A5-BCF8-4025-9347-E5EA94DD9BC5}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{EDF3A135-DFC9-4A96-B034-46E6B1FAD840}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDF3A135-DFC9-4A96-B034-46E6B1FAD840}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDF3A135-DFC9-4A96-B034-46E6B1FAD840}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDF3A135-DFC9-4A96-B034-46E6B1FAD840}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

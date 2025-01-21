@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
-namespace Domain
+namespace Kamervragen.Domain.Cosmos
 {
     public record Thread
     {

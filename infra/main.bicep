@@ -14,13 +14,16 @@ param blobStorageContainerName string = 'documents'
 param embeddingModelName string = 'text-embedding-3-large'
 
 @description('Name/id of the embedding model to be used for the indexer during indexing.')
-param indexerEmbeddingModelId string = 'text-embedding-3-large'
+param indexerEmbeddingModelId string = 'text-embedding-3-large-indexer'
 
 @description('Name of completionmodel.')
 param completionModelName string = 'gpt-4o'
 
+@description('API Version of completion model.')
+param completionModelAPIVersion string = '2024-08-06'
+
 @description('Name/id of the embedding model to be used for the indexer during querying.')
-param integratedVectorEmbeddingModelId string = 'text-embedding-3-large'
+param integratedVectorEmbeddingModelId string = 'text-embedding-3-large-query'
 
 @description('Name of the AI search index to be created or updated, must be lowercase.')
 param indexName string = 'onyourdata'
@@ -53,11 +56,12 @@ param azureAdClientId string
 @description('Tenant ID.')
 param azureAdTenantId string
 
-var cosmosDatabaseName = 'history'
-var cosmosDocumentContainerName = 'documentsperthread'
-var cosmosDocumentContainerLeaseName = 'docsleases'
-var cosmosHistoryContainerName = 'threadhistory'
-var cosmosThreadContainerLeaseName = 'threadleases'
+var cosmosDatabaseName = 'chats'
+var cosmosDocumentsContainerName = 'documents'
+var cosmosDocumentPerThreadContainerName = 'documentsperthread'
+var cosmosDocumentPerThreadContainerLeaseName = 'docsleases'
+var cosmosThreadHistoryContainerName = 'threadhistory'
+var cosmosThreadHistoryContainerLeaseName = 'threadleases'
 var sqlRoleName = 'sql-contributor-${cosmosAccountName}'
 var blobOwnerRoleId = 'b7e6dc6d-f1e8-4753-8033-0f276bb0955b'
 
@@ -70,6 +74,15 @@ module appServicePlan 'br/public:avm/res/web/serverfarm:0.3.0' = {
   }
 }
 
+module appInsightsFuntionApp 'br/public:avm/res/insights/component:0.4.1' = {
+  name: 'appInsightsFuntionApp'
+  params: {
+    name: functionAppName
+    workspaceResourceId: workspace.outputs.resourceId
+    location: resourceGroup().location
+  }
+}
+
 module frontendSite 'br/public:avm/res/web/site:0.9.0' = {
   name: 'frontendSite'
   params: {
@@ -77,6 +90,7 @@ module frontendSite 'br/public:avm/res/web/site:0.9.0' = {
     name: frontendAppName
     serverFarmResourceId: appServicePlan.outputs.resourceId
     location: resourceGroup().location
+    appInsightResourceId: appInsightsFuntionApp.outputs.resourceId
   }
 }
 
@@ -98,6 +112,7 @@ module backendSite 'br/public:avm/res/web/site:0.9.0' = {
         supportCredentials: true
       }
     }
+    appInsightResourceId: appInsightsFuntionApp.outputs.resourceId
   }
 }
 
@@ -124,14 +139,7 @@ module workspace 'br/public:avm/res/operational-insights/workspace:0.7.1' = {
     location: resourceGroup().location
   }
 }
-module appInsightsFuntionApp 'br/public:avm/res/insights/component:0.4.1' = {
-  name: 'appInsightsFuntionApp'
-  params: {
-    name: functionAppName
-    workspaceResourceId: workspace.outputs.resourceId
-    location: resourceGroup().location
-  }
-}
+
 
 module functionApp 'br/public:avm/res/web/site:0.9.0' = {
   name: 'functionApp'
@@ -178,13 +186,13 @@ module aiSearch 'br/public:avm/res/search/search-service:0.7.1' = {
   name: 'aiSearch'
   params: {
     name: aiSearchName
-    sku: 'basic'
+    sku: 'standard'
     location: resourceGroup().location
     managedIdentities: {
       systemAssigned: true
     }
     replicaCount: 1
-    partitionCount: 1
+    partitionCount: 2
     roleAssignments: [
       {
         principalId: backendSite.outputs.systemAssignedMIPrincipalId
@@ -254,7 +262,7 @@ module openAi './modules/cognitiveservices/cognitive-services.bicep' = {
         model: {
           format: 'OpenAI'
           name: embeddingModelName
-          version: '2'
+          version: '1'
         }
         name: indexerEmbeddingModelId
       }
@@ -262,7 +270,7 @@ module openAi './modules/cognitiveservices/cognitive-services.bicep' = {
         model: {
           format: 'OpenAI'
           name: embeddingModelName
-          version: '2'
+          version: '1'
         }
         name: integratedVectorEmbeddingModelId
       }
@@ -270,7 +278,7 @@ module openAi './modules/cognitiveservices/cognitive-services.bicep' = {
         model: {
           format: 'OpenAI'
           name: completionModelName
-          version: '2024-05-13'
+          version: completionModelAPIVersion
         }
         name: completionModelName
       }
@@ -300,7 +308,7 @@ module cosmosDB 'br/public:avm/res/document-db/database-account:0.8.0' = {
   name: 'cosmosDB'
   params: {
     name: cosmosAccountName
-    location: resourceGroup().location
+    location: 'francecentral'
     networkRestrictions: {
       publicNetworkAccess: 'Enabled'
       ipRules: []
@@ -314,25 +322,7 @@ module cosmosDB 'br/public:avm/res/document-db/database-account:0.8.0' = {
             indexingPolicy: {
               automatic: true
             }
-            name: cosmosDocumentContainerName
-            paths: [
-              '/userId'
-            ]
-          }
-          {
-            indexingPolicy: {
-              automatic: true
-            }
-            name: cosmosHistoryContainerName
-            paths: [
-              '/userId'
-            ]
-          }
-          {
-            indexingPolicy: {
-              automatic: true
-            }
-            name: cosmosDocumentContainerLeaseName
+            name: cosmosDocumentsContainerName
             paths: [
               '/id'
             ]
@@ -341,7 +331,34 @@ module cosmosDB 'br/public:avm/res/document-db/database-account:0.8.0' = {
             indexingPolicy: {
               automatic: true
             }
-            name: cosmosThreadContainerLeaseName
+            name: cosmosDocumentPerThreadContainerName
+            paths: [
+              '/userId'
+            ]
+          }
+          {
+            indexingPolicy: {
+              automatic: true
+            }
+            name: cosmosThreadHistoryContainerName
+            paths: [
+              '/userId'
+            ]
+          }
+          {
+            indexingPolicy: {
+              automatic: true
+            }
+            name: cosmosDocumentPerThreadContainerLeaseName
+            paths: [
+              '/id'
+            ]
+          }
+          {
+            indexingPolicy: {
+              automatic: true
+            }
+            name: cosmosThreadHistoryContainerLeaseName
             paths: [
               '/id'
             ]
@@ -384,8 +401,9 @@ resource backendAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
     'Storage:ContainerName': blobStorageContainerName
     'Cosmos:AccountEndpoint': cosmosDB.outputs.endpoint
     'Cosmos:DatabaseName': cosmosDatabaseName
-    'Cosmos:ContainerName': cosmosDocumentContainerName
-    'Cosmos:ThreadHistoryContainerName': cosmosHistoryContainerName
+    'Cosmos:DocumentsContainerName': cosmosDocumentsContainerName
+    'Cosmos:DocumentPerThreadContainerName': cosmosDocumentPerThreadContainerName
+    'Cosmos:ThreadHistoryContainerName': cosmosThreadHistoryContainerName
     'Search:EndPoint': 'https://${aiSearch.outputs.name}.search.windows.net'
     'Search:IndexName': indexName
     'Search:IndexerName': '${indexName}-indexer'
@@ -413,10 +431,11 @@ resource functionAppSettings 'Microsoft.Web/sites/config@2022-09-01' = {
     AzureWebJobsStorage__accountname: functionAppStorageAccount.outputs.name
     FUNCTIONS_WORKER_RUNTIME: 'dotnet-isolated'
     CosmosDbDatabase: cosmosDatabaseName
-    CosmosDbDocumentContainer: cosmosDocumentContainerName
-    CosmosDbThreadContainer: cosmosHistoryContainerName
-    CosmosDbDocumentLease: cosmosDocumentContainerLeaseName
-    CosmosDbThreadLease: cosmosThreadContainerLeaseName
+    CosmosDbDocumentPerThreadContainerName: cosmosDocumentPerThreadContainerName
+    CosmosDbDocumentsContainerName: cosmosDocumentsContainerName
+    CosmosDbThreadContainer: cosmosThreadHistoryContainerName
+    CosmosDbDocumentLease: cosmosDocumentPerThreadContainerLeaseName
+    CosmosDbThreadLease: cosmosThreadHistoryContainerLeaseName
     CosmosDbConnection__accountEndpoint: cosmosDB.outputs.endpoint
     MyCosmosConnection: cosmosDB.outputs.endpoint
     ThreadCleanupCron: '0 0 * * * *'

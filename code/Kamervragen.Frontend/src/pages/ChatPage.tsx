@@ -1,8 +1,7 @@
-import { makeStyles, tokens } from '@fluentui/react-components';
+import { makeStyles } from '@fluentui/react-components';
 import { Chatlist } from '../components/Chat/Chatlist';
 import ChatInterface from '../components/Chat/ChatInterface';
 import { useChats } from '../hooks/useChats';
-import SearchInterface from '../components/Search/SearchInterface';
 import { SelectedQAPair } from '../components/Search/QuestionAnswerList';
 import { useState } from 'react';
 
@@ -19,7 +18,7 @@ const useClasses = makeStyles({
 export function ChatPage() {
   const classes = useClasses();
   const chats = useChats();
-  const [selectedQAPairs, setSelectedQAPairs] = useState<SelectedQAPair[]>([]);
+  const [selectedQAPairs] = useState<SelectedQAPair[]>([]);
 
   
 

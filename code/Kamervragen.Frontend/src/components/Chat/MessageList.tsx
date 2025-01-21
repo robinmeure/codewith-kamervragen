@@ -1,12 +1,8 @@
-import { Button, Drawer, DrawerBody, DrawerHeader, DrawerHeaderTitle, makeStyles,useRestoreFocusSource,
-    useRestoreFocusTarget, tokens } from '@fluentui/react-components';
+import { Button, makeStyles,
+    tokens } from '@fluentui/react-components';
 import { Message } from './Message';
 import { useEffect, useRef } from 'react';
 import { IChatMessage } from '../../models/ChatMessage';
-import { Dismiss24Regular } from '@fluentui/react-icons';
-import { type } from 'os';
-import React from 'react';
-import Markdown from 'react-markdown';
 import { SelectedQAPair } from '../Search/QuestionAnswerList';
 
 const useClasses = makeStyles({
@@ -85,11 +81,6 @@ export function MessageList({ messages, loading, selectedChatId, onFollowUp, onQ
     const classes = useClasses();
     const containerRef = useRef<HTMLDivElement>(null);
    
-    const onClick = (value: string) => {
-        onFollowUp(value);
-    }
-    
-
     useEffect(() => {
         if (containerRef.current ) {
             containerRef.current.scrollTo({

@@ -81,7 +81,7 @@ interface SearchInterfaceProps {
 
 const SearchInterface: React.FC<SearchInterfaceProps> = ({ chatId, onQAPairsSelected }) => {
   const { documents, isLoading, searchDocuments, getAnswers } = useSearch(chatId);
-  const [allSelectedQAPairs, setAllSelectedQAPairs] = useState<SelectedQAPair[]>([]);
+  const [, setAllSelectedQAPairs] = useState<SelectedQAPair[]>([]);
   const classes = useClasses();
 
   const handleSearch = (query: string) => {
