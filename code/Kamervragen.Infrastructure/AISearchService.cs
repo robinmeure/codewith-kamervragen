@@ -121,7 +121,7 @@ namespace Infrastructure
         public async Task<List<TweedeKamerVragenDoc>> SearchForDocuments(string query, List<string>? documentIds = null)
         {
             List<TweedeKamerVragenDoc> docs = new List<TweedeKamerVragenDoc>();
-
+            HashSet<string> foundDocumentIds = new HashSet<string>();
             // Construct filter string for multiple document IDs if provided
             string? filterString = null;
             if (documentIds != null && documentIds.Any())
@@ -155,7 +155,7 @@ namespace Infrastructure
                         {
                             KNearestNeighborsCount = 3,
                             Fields = { "content_vector" },
-                            Exhaustive = true
+                            Exhaustive = false
                         }
                     },
                 };
@@ -177,7 +177,7 @@ namespace Infrastructure
                         {
                             KNearestNeighborsCount = 3,
                             Fields = { "content_vector" },
-                            Exhaustive = true
+                            Exhaustive = false
                         }
                     },
                 };
@@ -187,7 +187,11 @@ namespace Infrastructure
 
             await foreach (SearchResult<TweedeKamerVragenDoc> searchResult in response.GetResultsAsync())
             {
-                docs.Add(searchResult.Document);
+                // since the result can contain data from a single document which is split into multiple chunks
+                if (foundDocumentIds.Add(searchResult.Document.DocumentId))
+                {
+                    docs.Add(searchResult.Document);
+                }
             }
 
             return docs;

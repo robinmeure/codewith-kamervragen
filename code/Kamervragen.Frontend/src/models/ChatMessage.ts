@@ -5,6 +5,7 @@ export interface IChatMessage {
     role: string,
     content: string,
     timestamp?: string,
+    followupquestions?: string[],
     context?:IChatContext    
 }
 

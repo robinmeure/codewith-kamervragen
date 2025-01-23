@@ -3,13 +3,7 @@ using Kamervragen.Domain.Chat;
 using Kamervragen.Domain.Cosmos;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
+using Spectre.Console.Json;
 
 namespace Kamervragen.ConsoleApp
 {
@@ -20,8 +14,7 @@ namespace Kamervragen.ConsoleApp
         private readonly IAIService _semanticKernelService;
         private bool suggestFollowupQuestions = true; // need to configure this
         private bool keepTrackOfThoughts = true;
-
-
+        
         public Chat(
             ILogger<Chat> logger,
             ISearchService searchService,
@@ -38,9 +31,11 @@ namespace Kamervragen.ConsoleApp
             AnsiConsole.WriteLine("Welcome to the Kamervragen chatbot. Ask me anything about the Dutch parliament.");
             AnsiConsole.WriteLine("Type 'exit' to quit the chatbot.");
             string query = AnsiConsole.Prompt(
-                    new TextPrompt<string>("What is your question?")); 
-            
+                    new TextPrompt<string>("What is your question?"));
+            Console.WriteLine($"Let's work with your question '{query}'");
+
             List<ThreadMessage> messages = new List<ThreadMessage>();
+           
 
             while (true)
             {
@@ -72,10 +67,17 @@ namespace Kamervragen.ConsoleApp
                         ctx.SpinnerStyle(Style.Parse("green"));
                         var genericResults = await _searchService.SearchForDocuments(rewrittenQuery, null);
                         searchResults.AddRange(genericResults);
+                        AnsiConsole.WriteLine();
+                        AnsiConsole.MarkupLine("Found some documents!");
+                        foreach(var result in searchResults)
+                        {
+                            AnsiConsole.MarkupLine($"[bold]{result.FileName} - {result.Onderwerp}[/]");
+                        }
+
                         _semanticKernelService.AugmentHistoryWithSearchResultsUsingSemanticRanker(history, searchResults);
 
                         // Update the status and spinner
-                        ctx.Status($"Passing found documents to the LLKM");
+                        ctx.Status($"Passing found documents to the LLM");
                         ctx.Spinner(Spinner.Known.Aesthetic);
                         ctx.SpinnerStyle(Style.Parse("green"));
                         assistantAnswer = await _semanticKernelService.GetAnswerAndThougthsResponse(history);
@@ -83,7 +85,6 @@ namespace Kamervragen.ConsoleApp
                         ctx.Status($"Generating follow up prompts");
                         ctx.Spinner(Spinner.Known.Aesthetic);
                         ctx.SpinnerStyle(Style.Parse("green"));
-                        
 
                         if (suggestFollowupQuestions)
                         {
@@ -125,19 +126,48 @@ namespace Kamervragen.ConsoleApp
                     DataPointsContent: supportingContents.ToArray(),
                     Thoughts: thoughts.ToArray());
 
-                AnsiConsole.Write(
+                var root = new Tree("Chat").Guide(TreeGuide.Ascii);
+                var user = root.AddNode("[bold]User[/]");
+                user.AddNode(
                     new Panel(query)
-                        .Header("[bold]User[/]", Justify.Left)
+                        .Header("[bold]Query[/]", Justify.Right)
                         .Collapse()
                         .RoundedBorder()
                         .BorderColor(Color.White));
 
+                var json = new JsonText(System.Text.Json.JsonSerializer.Serialize(assistantAnswer));
+
                 var assistantAnswerEscaped = assistantAnswer.Answer.Replace("[", "[[").Replace("]", "]]");
-                AnsiConsole.Write(new Panel(assistantAnswerEscaped)
-                    .Header("[bold]Answer[/]", Justify.Right)
-                    .Collapse()
-                    .RoundedBorder()
-                    .BorderColor(Color.Yellow));
+                var assistantThoughtsEscaped = assistantAnswer.Thoughts.Replace("[", "[[").Replace("]", "]]");
+                string assistantReferencesEscaped = string.Empty;
+                foreach (string reference in assistantAnswer.References)
+                {
+                    assistantReferencesEscaped += reference.Replace("[", "[[").Replace("]", "]]") + "\n";
+                }
+
+               
+                var assistant = root.AddNode("[bold]Assistant[/]");
+                assistant.AddNode(
+                   new Panel(assistantAnswerEscaped)
+                       .Header("[bold]Answer[/]", Justify.Left)
+                       .Collapse()
+                       .RoundedBorder()
+                       .BorderColor(Color.Yellow));
+                assistant.AddNode(
+                    new Panel(assistantThoughtsEscaped)
+                        .Header("[bold]Thoughts[/]", Justify.Left)
+                        .Collapse()
+                        .RoundedBorder()
+                        .BorderColor(Color.Yellow));
+                assistant.AddNode(
+                   new Panel(assistantReferencesEscaped)
+                       .Header("[bold]References[/]", Justify.Left)
+                       .Collapse()
+                       .RoundedBorder()
+                       .BorderColor(Color.Yellow));
+
+
+                AnsiConsole.Write(root);
 
                 var followUpPrompts = AnsiConsole.Prompt(
                     new SelectionPrompt<string>()

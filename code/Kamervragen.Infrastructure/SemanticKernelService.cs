@@ -45,6 +45,7 @@ namespace Infrastructure
             // Specify response format
             var executionSettings = new AzureOpenAIPromptExecutionSettings
             {
+                Temperature = 0.2,
                 ResponseFormat = typeof(AnswerAndThougthsResponse),
             };
 
@@ -165,7 +166,9 @@ namespace Infrastructure
         public ChatHistory AugmentHistoryWithSearchResultsUsingSemanticRanker(ChatHistory history, List<TweedeKamerVragenDoc> searchResults)
         {
             string documents = "";
-
+            
+            // since we're give all the chunks from a single document, we're only interested in the document itself
+            // (we have all the metadata we want on the single doc)
             var groupedResults = searchResults.GroupBy(x => x.FileName);
 
             foreach (var fileName in groupedResults)
@@ -198,13 +201,15 @@ namespace Infrastructure
             }
 
             string systemPrompt = $@"
-            //Each source which is given, is a document that handles questions and answers. Please note who the members are, the summary, the intent, the onderwerp, the datum and the soort of the document.
+            //Each source which is given, is a document that handles questions and answers.
+            
+            //Use these sources to formulate an answer to the question of the user. And always cite the document by it's filename
             //Try to use each source being given to formulate a response on, regardless how small the given content can be.
             //Answer ONLY with the facts listed in the sources below. If there isn't enough information, state ""I don't know.""
             //Do not generate answers that do not use the sources below. If a clarifying question to the user would help, ask it.
             //Always answer in Dutch and maintain a formal tone. You can use markdown to format the response in the answer to make it more readable
             //
-            //Look up the question and answer combination from the source that is relevant to the question.
+            //Look up the question and answer combination from the source that is relevant to the user's question.
             Your answer must be a JSON object in the following format. 
             {{
                 ""answer"": // the answer to the question
@@ -265,13 +270,15 @@ namespace Infrastructure
                     // Specify response format by setting Type object in prompt execution settings.
                     var executionSettings = new AzureOpenAIPromptExecutionSettings
                     {
-                        ResponseFormat = typeof(VraagStukResult)
+                        ResponseFormat = typeof(VraagStukResult),
+                        Temperature = 0.2
                     };
 
                     var chatResponse = await completionService.GetChatMessageContentsAsync(
                                         executionSettings: executionSettings,
                                         chatHistory: history,
                                         kernel: _kernel
+                                        
                                     );
 
                     foreach (var chunk in chatResponse)

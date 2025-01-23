@@ -20,7 +20,7 @@ var kind = 'OpenAI'
 
 resource account 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
   name: name
-  location: 'swedencentral'
+  location: location
   kind: kind
   sku: sku
   properties: {

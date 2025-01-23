@@ -85,6 +85,7 @@ namespace Kamervragen.ConsoleApp
             try
             {
                 var extractedDoc = await _semanticKernelService.ExtractDocument(chunks, documentId);
+               
                 if (extractedDoc != null)
                 {
                     await _searchService.Ingest(extractedDoc, chunks);
